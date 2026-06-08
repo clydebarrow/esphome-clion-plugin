@@ -38,6 +38,13 @@
         <fileBasedIndex implementation="io.esphome.clion.index.EsphomeIncludeIndex"/>
         <fileBasedIndex implementation="io.esphome.clion.index.EsphomeIdIndex"/>
 
+        <referencesSearch implementation="io.esphome.clion.references.EsphomeIdReferenceSearcher"/>
+        <findUsagesHandlerFactory implementation="io.esphome.clion.references.EsphomeIdFindUsagesHandlerFactory"/>
+        <renamePsiElementProcessor
+            implementation="io.esphome.clion.references.EsphomeIdRenameProcessor"
+            order="first"/>
+        <renameHandler implementation="io.esphome.clion.references.EsphomeIdRenameHandler"/>
+
         <applicationConfigurable
             parentId="tools"
             id="io.esphome.clion.settings.EsphomeSettingsConfigurable"

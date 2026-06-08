@@ -1,6 +1,7 @@
 # Roadmap: includes, project model, and ID navigation
 
-Status: Phases 1–4 done (id rename + Phase 5 inspections remain) (2026-06-08).
+Status: Phases 1–4 done incl. id Find Usages + Rename; Phase 5 inspections
+remain (2026-06-09).
 
 The objective: open a top-level ESPHome device YAML and treat its whole
 `!include` graph as a navigable unit — resolve included files, and navigate via
@@ -88,11 +89,18 @@ Implemented in `references` + the completion contributor:
   (`PsiPolyVariantReferenceBase`, **soft**) resolves across
   `EsphomeIncludeGraph.connectedFiles`. Go-to-definition and find-usages work
   off this; completion offers in-scope, type-matching ids.
-- **Rename deferred**: renaming from a reference works via the manipulator, but
-  initiating rename on the `id:` declaration needs a `RenamePsiElementProcessor`
-  (YAML scalars aren't `PsiNamedElement`). Tracked under hard parts.
-- Tests: `EsphomeIdReferenceTest` (same-file, provides-inheritance, cross-include,
-  undeclared, type-mismatch) + `EsphomeIdCompletionTest`.
+- **Find Usages + Rename (done)**: a YAML scalar isn't a `PsiNamedElement`, so
+  the default caches-based search can't walk reference→declaration backwards.
+  Solved without disturbing the YAML plugin via composable EPs:
+  `EsphomeIdReferenceSearcher` (`referencesSearch`) finds references to a
+  declaration over `connectedFiles`; `EsphomeIdFindUsagesHandlerFactory`
+  enables the action; `EsphomeIdRenameProcessor` (`renamePsiElementProcessor`,
+  order=first) rewrites the declaration (via the scalar manipulator) and all
+  usages; `EsphomeIdRenameHandler` (`renameHandler`) makes Rename invokable on
+  the declaration itself (`TargetElementUtil` won't target a non-named scalar).
+  Rename from a reference uses the platform's standard handler + our processor.
+- Tests: `EsphomeIdReferenceTest`, `EsphomeIdCompletionTest`,
+  `EsphomeIdFindUsagesAndRenameTest`.
 
 Original design notes:
 - **Go-to-definition**: a `PsiReferenceContributor` on scalars in id-*reference*

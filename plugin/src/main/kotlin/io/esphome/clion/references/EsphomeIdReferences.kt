@@ -62,6 +62,16 @@ object EsphomeIdReferences {
     }
 
     /**
+     * If [scalar] is the value of an `id:` declaration, the declared id name;
+     * otherwise null. Used by Find Usages and Rename to recognise the target.
+     */
+    fun declaredIdName(scalar: YAMLScalar): String? {
+        val keyValue = scalar.parent as? YAMLKeyValue ?: return null
+        if (keyValue.keyText != ID_KEY || keyValue.value !== scalar) return null
+        return scalar.textValue.takeIf { it.isNotEmpty() && !it.contains("\${") && it.matches(ID_TOKEN) }
+    }
+
+    /**
      * The key/value whose **value** — a scalar or a list element — is [scalar].
      * Returns null when [scalar] is a key (so config keys never get treated as id
      * references) or anything other than a value.
