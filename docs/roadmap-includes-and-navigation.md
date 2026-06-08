@@ -1,6 +1,6 @@
 # Roadmap: includes, project model, and ID navigation
 
-Status: planning + Phase 1 in progress (2026-06-08).
+Status: Phases 1 & 2 done; Phase 3 next (2026-06-08).
 
 The objective: open a top-level ESPHome device YAML and treat its whole
 `!include` graph as a navigable unit — resolve included files, and navigate via
@@ -65,9 +65,19 @@ key of the block form `!include { file:, vars: }`), contributes a
 rename-on-move for free. Also covers `packages:` local includes. No index
 needed — ships first, self-contained.
 
-### Phase 2 — include graph + ID index
-The two indexes above. No user-visible feature except (optionally) a "fragment
-included by N device(s)" gutter marker as a cheap proof the graph resolves.
+### Phase 2 — include graph + ID index (done)
+Implemented as the two `FileBasedIndex`es above plus two project services. No UI
+yet (the optional gutter marker was deferred). Concretely:
+- `index.EsphomeIncludeIndex` — `!include` targets keyed by basename
+  (reverse-queryable), value = raw relative path.
+- `index.EsphomeIdIndex` — `id:` declarations keyed by name, value =
+  `IdDeclaration(offset, domain, platform)` (component class kept out of the
+  index so a catalog bump needs no reindex).
+- `services.EsphomeIncludeGraph` — `directIncludes` / `directIncluders` (precise,
+  re-resolved per candidate) / `rootsOf` / `connectedFiles` (resolution scope).
+- `services.EsphomeIds` — `declarationsIn(scope)` / `resolve(name, scope)`.
+All read PSI/index under a read action. Covered by `EsphomeIncludeGraphTest` and
+`EsphomeIdsTest`.
 
 ### Phase 3 — ID navigation
 With the indexes in place:
