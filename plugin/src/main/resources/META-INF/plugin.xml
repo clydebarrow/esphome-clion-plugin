@@ -18,5 +18,21 @@
         <completion.contributor
             language="yaml"
             implementationClass="io.esphome.clion.completion.EsphomeCompletionContributor"/>
+
+        <externalAnnotator
+            language="yaml"
+            implementationClass="io.esphome.clion.validation.EsphomeValidationAnnotator"/>
+
+        <lang.documentationProvider
+            language="yaml"
+            implementationClass="io.esphome.clion.documentation.EsphomeDocumentationProvider"/>
+
+        <applicationConfigurable
+            parentId="tools"
+            id="io.esphome.clion.settings.EsphomeSettingsConfigurable"
+            displayName="ESPHome"
+            instance="io.esphome.clion.settings.EsphomeSettingsConfigurable"/>
+
+        <notificationGroup id="ESPHome" displayType="BALLOON"/>
     </extensions>
 </idea-plugin>

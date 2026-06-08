@@ -10,6 +10,9 @@
 esphome:
   name: living-room
 
+host:
+
+
 wifi:
   ssid: "MyNetwork"
   password: "secret"
@@ -18,6 +21,12 @@ wifi:
     channel: 1
     ssid: "Living Room Fallback"
 
+
+binary_sensor:
+  - platform: gpxo
+
+
+    id: fred
 
 i2c:
   sda: 21
