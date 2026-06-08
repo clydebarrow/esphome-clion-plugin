@@ -8,8 +8,10 @@ import com.intellij.notification.NotificationType
 import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.lang.annotation.ExternalAnnotator
 import com.intellij.lang.annotation.HighlightSeverity
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.editor.Document
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.VirtualFile
@@ -44,6 +46,7 @@ class EsphomeValidationAnnotator : ExternalAnnotator<EsphomeValidationAnnotator.
             warnExecutableMissingOnce()
             return emptyList()
         }
+        flushUnsavedChanges(info.file)
         val command = GeneralCommandLine(executable, "config", info.path)
             .withCharset(StandardCharsets.UTF_8)
         info.file.parent?.path?.let(command::withWorkDirectory)
@@ -58,6 +61,24 @@ class EsphomeValidationAnnotator : ExternalAnnotator<EsphomeValidationAnnotator.
         } catch (e: ExecutionException) {
             thisLogger().warn("Could not run '$executable config'", e)
             emptyList()
+        }
+    }
+
+    /**
+     * `esphome config` reads the file from disk, so flush unsaved editor changes
+     * before validating. Otherwise a just-corrected error stays highlighted:
+     * validation re-runs against stale on-disk content and re-reports the problem.
+     *
+     * Runs from the background [doAnnotate] phase (no read lock held), so it can
+     * legally hop to the EDT to save — unlike [collectInformation], which executes
+     * inside a read action where `invokeAndWait` would deadlock.
+     */
+    private fun flushUnsavedChanges(file: VirtualFile) {
+        val fileDocumentManager = FileDocumentManager.getInstance()
+        ApplicationManager.getApplication().invokeAndWait {
+            fileDocumentManager.getDocument(file)
+                ?.takeIf(fileDocumentManager::isDocumentUnsaved)
+                ?.let(fileDocumentManager::saveDocument)
         }
     }
 
