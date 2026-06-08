@@ -1,0 +1,37 @@
+{
+  "esphome_schema_version": "2026.5.3",
+  "components": [
+    {
+      "id": "wifi",
+      "name": "WiFi Component",
+      "description": "Sets up WiFi connections to access points.",
+      "category": "core",
+      "docs_url": "https://esphome.io/components/wifi",
+      "image_url": "https://esphome.io/images/network-wifi.svg",
+      "multi_conf": false
+    },
+    {
+      "id": "i2c",
+      "name": "I²C Bus",
+      "category": "bus",
+      "docs_url": "https://esphome.io/components/i2c",
+      "multi_conf": true
+    },
+    {
+      "id": "switch.gpio",
+      "name": "GPIO Switch",
+      "category": "switch",
+      "docs_url": "https://esphome.io/components/switch/gpio",
+      "dependencies": [],
+      "multi_conf": true,
+      "supported_platforms": []
+    },
+    {
+      "id": "sensor.dht",
+      "name": "DHT Temperature & Humidity Sensor",
+      "category": "sensor",
+      "docs_url": "https://esphome.io/components/sensor/dht",
+      "dependencies": []
+    }
+  ]
+}

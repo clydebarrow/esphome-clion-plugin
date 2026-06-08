@@ -1,0 +1,22 @@
+<idea-plugin>
+    <id>io.esphome.clion</id>
+    <name>ESPHome</name>
+    <vendor email="clyde@stubbs.me" url="https://esphome.io">Clyde Stubbs</vendor>
+
+    <description><![CDATA[
+        <p>ESPHome configuration support for CLion.</p>
+        <p>Provides completion (and, in later phases, documentation and
+        validation) for ESPHome YAML device configurations, driven by the
+        ESPHome component catalog.</p>
+    ]]></description>
+
+    <!-- YAML PSI/parsing comes from the bundled YAML plugin (present in CLion). -->
+    <depends>com.intellij.modules.platform</depends>
+    <depends>org.jetbrains.plugins.yaml</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <completion.contributor
+            language="yaml"
+            implementationClass="io.esphome.clion.completion.EsphomeCompletionContributor"/>
+    </extensions>
+</idea-plugin>

@@ -1,0 +1,37 @@
+# Example ESPHome config for manually exercising the plugin in a sandbox IDE
+# (./gradlew :plugin:runIde). Try Ctrl/Cmd+Space:
+#   - on a blank top-level line  -> component/domain keys (wifi, sensor, switch, i2c…)
+#   - inside `wifi:`             -> ssid, password, ap, manual_ip…
+#   - inside `wifi: ap:`         -> nested AP keys (ssid, channel, ap_timeout…)
+#   - after `- platform: `       -> dht, gpio… (per domain)
+#   - inside a `- platform: gpio` switch item -> name, pin, restore_mode…
+#   - on `restore_mode: `        -> the enum option values
+
+esphome:
+  name: living-room
+
+wifi:
+  ssid: "MyNetwork"
+  password: "secret"
+  fast_connect: true
+  ap:
+    channel: 1
+    ssid: "Living Room Fallback"
+
+
+i2c:
+  sda: 21
+  scl: 22
+
+sensor:
+  - platform: dht
+
+    pin: 4
+    temperature:
+      name: "Living Room Temperature"
+
+switch:
+  - platform: gpio
+    name: Fred
+    pin: 12
+    restore_mode: R
