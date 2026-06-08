@@ -14,6 +14,10 @@ plugins {
     id("org.jetbrains.intellij.platform") version "2.5.0"
 }
 
+// Plugin version: patched into plugin.xml's <version> and used in the
+// distribution file name. Bump for each shared build / GitHub release.
+version = providers.gradleProperty("pluginVersion").orElse("0.1.0").get()
+
 repositories {
     mavenCentral()
     intellijPlatform {
@@ -62,6 +66,12 @@ intellijPlatform {
 
 kotlin {
     jvmToolchain(17)
+}
+
+// Name the distribution after the product, not the Gradle module (":plugin"),
+// so the released artifact reads `esphome-clion-plugin-<version>.zip`.
+tasks.named<Zip>("buildPlugin") {
+    archiveBaseName.set("esphome-clion-plugin")
 }
 
 // --- Full catalog vendoring -------------------------------------------------
