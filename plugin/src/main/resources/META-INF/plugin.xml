@@ -41,6 +41,9 @@
         <referencesSearch implementation="io.esphome.clion.references.EsphomeIdReferenceSearcher"/>
         <findUsagesHandlerFactory implementation="io.esphome.clion.references.EsphomeIdFindUsagesHandlerFactory"/>
         <usageTargetProvider implementation="io.esphome.clion.references.EsphomeIdUsageTargetProvider"/>
+        <targetElementEvaluator
+            language="yaml"
+            implementationClass="io.esphome.clion.references.EsphomeTargetElementEvaluator"/>
         <renamePsiElementProcessor
             implementation="io.esphome.clion.references.EsphomeIdRenameProcessor"
             order="first"/>

@@ -61,6 +61,34 @@ class EsphomeIdFindUsagesAndRenameTest : BasePlatformTestCase() {
         assertNull(EsphomeIdUsageTargetProvider().getTargets(myFixture.editor, myFixture.file))
     }
 
+    fun `test declaration is a named target under the caret`() {
+        // Enables Go To Declaration or Usages (Cmd-click) to show usages on a
+        // declaration: TargetElementUtil must resolve the caret to the id scalar.
+        myFixture.configureByText(
+            "device.yaml",
+            """
+            esphome:
+              name: x
+            output:
+              - platform: gpio
+                id: relay_<caret>out
+                pin: 4
+            """.trimIndent(),
+        )
+        val target = com.intellij.codeInsight.TargetElementUtil.getInstance()
+            .findTargetElement(myFixture.editor, com.intellij.codeInsight.TargetElementUtil.ELEMENT_NAME_ACCEPTED, myFixture.editor.caretModel.offset)
+        assertTrue(target is YAMLScalar && (target as YAMLScalar).textValue == "relay_out")
+    }
+
+    fun `test ordinary yaml keys remain targetable`() {
+        // Regression guard: the evaluator must not suppress the platform default,
+        // so a normal YAML key still resolves to a target (no NPE / null).
+        myFixture.configureByText("device.yaml", "esphome:\n  name: x\nwi<caret>fi:\n  ssid: s\n")
+        val target = com.intellij.codeInsight.TargetElementUtil.getInstance()
+            .findTargetElement(myFixture.editor, com.intellij.codeInsight.TargetElementUtil.ELEMENT_NAME_ACCEPTED, myFixture.editor.caretModel.offset)
+        assertNotNull(target)
+    }
+
     fun `test find usages from declaration finds the reference`() {
         myFixture.configureByText("device.yaml", deviceText)
         val usages = myFixture.findUsages(declarationScalar("relay_out"))
