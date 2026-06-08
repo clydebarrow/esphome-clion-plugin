@@ -5,6 +5,15 @@ documentation, and validation. See
 [`docs/esphome-data-sources.md`](docs/esphome-data-sources.md) for the data
 architecture and why this does **not** use a JSON Schema.
 
+## Install
+
+Download the latest plugin zip from the
+[**Releases**](https://github.com/clydebarrow/esphome-clion-plugin/releases/latest)
+page (don't unzip it), then in CLion go to **Settings → Plugins → ⚙ → Install
+Plugin from Disk…**, select the zip, and restart. If validation is quiet, set
+your esphome binary under **Settings → Tools → ESPHome** (it's auto-detected from
+`PATH` otherwise). Open any config with a top-level `esphome:` key to activate it.
+
 ## Modules
 
 | Module | What it is | Needs the IntelliJ SDK? |
