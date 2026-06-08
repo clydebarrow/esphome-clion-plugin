@@ -117,6 +117,17 @@ class CatalogRepository(private val source: CatalogSource) {
 
     fun isDomain(key: String): Boolean = key in domains
 
+    /**
+     * Every class an id reference (`references_component`) can target: the
+     * top-level component keys an id can be declared under (platform domains and
+     * non-platform components), plus every base class a component `provides`
+     * (e.g. `voltage_sampler`). An inspection uses this to avoid flagging a
+     * reference whose target class we simply don't model.
+     */
+    val referenceableClasses: Set<String> by lazy {
+        (topLevelKeys.asSequence() + index.components.asSequence().flatMap { it.provides.asSequence() }).toSet()
+    }
+
     /** Platform names available under a domain (`sensor` → `dht`, `adc`, …). */
     fun platformsFor(domain: String): List<String> =
         index.components.filter { it.domain == domain && it.platform != null }

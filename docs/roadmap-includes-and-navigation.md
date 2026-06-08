@@ -1,7 +1,6 @@
 # Roadmap: includes, project model, and ID navigation
 
-Status: Phases 1–4 done incl. id Find Usages + Rename; Phase 5 inspections
-remain (2026-06-09).
+Status: Phases 1–5 done (2026-06-09).
 
 The objective: open a top-level ESPHome device YAML and treat its whole
 `!include` graph as a navigable unit — resolve included files, and navigate via
@@ -129,10 +128,26 @@ the open file's name, and `parse(…, includeTopLevelErrors = false)` for fragme
 suppresses the root's headerless top-level errors (shown when the root is open).
 Tests: `EsphomeValidationTargetTest` + a parser case.
 
-### Phase 5 — inspections
-A `LocalInspectionTool` flagging id references that don't resolve in scope (with
-a quick-fix to create the declaration or pick a near-match), and unused
-declarations. Where the model becomes authoring help, not just navigation.
+### Phase 5 — inspections (done)
+- `EsphomeUnresolvedIdInspection` (enabled, WARNING): flags a *typed* id
+  reference whose value names no compatible declaration in scope, with
+  "Change to '<near-match>'" quick-fixes (Levenshtein ≤ 2). High precision:
+  typed references only, target class must be in `repo.referenceableClasses`,
+  and suppressed entirely when the scope builds ids from `${substitutions}`
+  (can't index those, so a literal ref may legitimately match). Complements the
+  `esphome config` validation (instant + quick-fix; no save needed).
+- `EsphomeUnusedIdInspection` (**disabled by default**, WEAK WARNING): flags an
+  `id:` declared but whose name appears nowhere else in the connected scope —
+  by whole-word *text* scan, so lambda uses (`id(x)`) count. Off by default
+  because ESPHome ids are often referenced only externally (HA/API/web).
+- `CatalogRepository.referenceableClasses` = top-level keys ∪ all `provides`.
+- Tests: `EsphomeIdInspectionTest`.
+
+## Status: complete
+
+All five phases are implemented and tested. Possible future work: id completion
+inside schema-less components (lvgl) via the name-based heuristic; substitution
+resolution; remote (`github://`) package fetching.
 
 ## Known hard parts / risks
 

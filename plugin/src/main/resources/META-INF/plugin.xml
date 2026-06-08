@@ -52,5 +52,23 @@
             instance="io.esphome.clion.settings.EsphomeSettingsConfigurable"/>
 
         <notificationGroup id="ESPHome" displayType="BALLOON"/>
+
+        <localInspection
+            language="yaml"
+            shortName="EsphomeUnresolvedId"
+            displayName="Unresolved ESPHome id reference"
+            groupName="ESPHome"
+            enabledByDefault="true"
+            level="WARNING"
+            implementationClass="io.esphome.clion.inspections.EsphomeUnresolvedIdInspection"/>
+
+        <localInspection
+            language="yaml"
+            shortName="EsphomeUnusedId"
+            displayName="Unused ESPHome id"
+            groupName="ESPHome"
+            enabledByDefault="false"
+            level="WEAK WARNING"
+            implementationClass="io.esphome.clion.inspections.EsphomeUnusedIdInspection"/>
     </extensions>
 </idea-plugin>
