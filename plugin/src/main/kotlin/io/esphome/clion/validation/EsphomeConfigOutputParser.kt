@@ -97,7 +97,10 @@ object EsphomeConfigOutputParser {
         for (index in 0..body.size) {
             val line = body.getOrNull(index)
             val trimmed = line?.trim().orEmpty()
-            val isProse = line != null && line.isNotBlank() && !YAML_KEY.matches(trimmed)
+            // Prose = an error sentence. Echoed-config lines (`key:`, `key: value`,
+            // and YAML list items like `- lvgl.resume:`) are structural, not prose —
+            // otherwise a list item in the dump is mistaken for a second error.
+            val isProse = line != null && line.isNotBlank() && !isStructuralLine(trimmed)
 
             if (isProse) {
                 message.add(trimmed)
@@ -110,6 +113,10 @@ object EsphomeConfigOutputParser {
         }
         return diagnostics
     }
+
+    /** A line from the echoed config: a `key:`/`key: value`, or a YAML list item (`- …`). */
+    private fun isStructuralLine(trimmed: String): Boolean =
+        YAML_KEY.matches(trimmed) || trimmed == "-" || trimmed.startsWith("- ")
 
     private fun isTopLevelError(raw: String): Boolean {
         if (raw.isBlank() || raw[0].isWhitespace()) return false

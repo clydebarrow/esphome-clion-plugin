@@ -166,6 +166,28 @@ class EsphomeConfigOutputParserTest {
     }
 
     @Test
+    fun `list items in the echoed config are not mistaken for a second error`() {
+        // Captured: an invalid option whose value is a list (`- lvgl.resume:`). The
+        // list item must not be read as a second prose error.
+        val out = """
+            Failed config
+            touchscreen.sdl: [source host.yaml:26]
+              platform: sdl
+              display: sdl_displa
+              id: sdl_touchscreen
+              [on_releas] is an invalid option for [touchscreen.sdl]. Did you mean [on_release]?
+              on_releas:
+                - lvgl.resume:
+        """.trimIndent()
+        val diagnostics = EsphomeConfigOutputParser.parse(out, "host.yaml", includeTopLevelErrors = false)
+        assertEquals(1, diagnostics.size)
+        assertEquals("on_releas", diagnostics[0].offendingKey)
+        assertEquals(26, diagnostics[0].anchorLine)
+        assertTrue(diagnostics[0].message.startsWith("[on_releas] is an invalid option"))
+        assertTrue(diagnostics.none { it.message.contains("lvgl.resume") })
+    }
+
+    @Test
     fun `empty or success output yields no diagnostics`() {
         assertTrue(EsphomeConfigOutputParser.parse("", "x.yaml").isEmpty())
         assertTrue(EsphomeConfigOutputParser.parse("INFO Configuration is valid!", "x.yaml").isEmpty())
