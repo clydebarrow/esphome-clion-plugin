@@ -29,6 +29,38 @@ class EsphomeIdFindUsagesAndRenameTest : BasePlatformTestCase() {
         return PsiTreeUtil.getParentOfType(myFixture.file.findElementAt(offset), YAMLScalar::class.java)!!
     }
 
+    fun `test usage target is offered when the caret is on a declaration`() {
+        // Mirrors the real IDE: Find Usages resolves the target at the caret via
+        // providers, not by being handed the element. Without the usage-target
+        // provider this reports "Cannot search for usages from this location".
+        myFixture.configureByText(
+            "device.yaml",
+            """
+            esphome:
+              name: x
+            output:
+              - platform: gpio
+                id: relay_<caret>out
+                pin: 4
+            light:
+              - platform: binary
+                name: L
+                output: relay_out
+            """.trimIndent(),
+        )
+        val targets = EsphomeIdUsageTargetProvider().getTargets(myFixture.editor, myFixture.file)
+        assertNotNull("a usage target on the declaration", targets)
+        assertEquals(1, targets!!.size)
+    }
+
+    fun `test no usage target when the caret is not on a declaration`() {
+        myFixture.configureByText(
+            "device.yaml",
+            "esphome:\n  na<caret>me: x\n",
+        )
+        assertNull(EsphomeIdUsageTargetProvider().getTargets(myFixture.editor, myFixture.file))
+    }
+
     fun `test find usages from declaration finds the reference`() {
         myFixture.configureByText("device.yaml", deviceText)
         val usages = myFixture.findUsages(declarationScalar("relay_out"))
