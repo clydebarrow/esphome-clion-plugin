@@ -31,6 +31,10 @@
             language="yaml"
             implementation="io.esphome.clion.references.EsphomeIncludeReferenceContributor"/>
 
+        <psi.referenceContributor
+            language="yaml"
+            implementation="io.esphome.clion.references.EsphomeIdReferenceContributor"/>
+
         <fileBasedIndex implementation="io.esphome.clion.index.EsphomeIncludeIndex"/>
         <fileBasedIndex implementation="io.esphome.clion.index.EsphomeIdIndex"/>
 

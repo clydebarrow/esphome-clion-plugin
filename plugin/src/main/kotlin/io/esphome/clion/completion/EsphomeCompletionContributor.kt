@@ -14,9 +14,13 @@ import com.intellij.util.ProcessingContext
 import io.esphome.clion.catalog.CatalogRepository
 import io.esphome.clion.catalog.ComponentCatalogEntry
 import io.esphome.clion.catalog.ConfigEntry
+import io.esphome.clion.catalog.ConfigEntryType
 import io.esphome.clion.catalog.childEntriesAt
 import io.esphome.clion.psi.EsphomeYaml
+import io.esphome.clion.references.EsphomeIdReferences
 import io.esphome.clion.services.EsphomeCatalogService
+import io.esphome.clion.services.EsphomeIds
+import io.esphome.clion.services.EsphomeIncludeGraph
 import org.jetbrains.yaml.YAMLLanguage
 import org.jetbrains.yaml.psi.YAMLFile
 import org.jetbrains.yaml.psi.YAMLKeyValue
@@ -154,6 +158,29 @@ private object EsphomeCompletionProvider : CompletionProvider<CompletionParamete
         entry.options?.forEach { option ->
             result.addElement(LookupElementBuilder.create(option.value).withTypeText(option.label))
         }
+
+        // An id-reference field → in-scope ids whose component type matches.
+        if (entry.type == ConfigEntryType.ID) {
+            entry.referencesComponent?.let { addIdReferenceCompletions(repo, position, it, result) }
+        }
+    }
+
+    /** Offer ids declared anywhere in the file's include graph that satisfy [referencesComponent]. */
+    private fun addIdReferenceCompletions(
+        repo: CatalogRepository,
+        position: PsiElement,
+        referencesComponent: String,
+        result: CompletionResultSet,
+    ) {
+        val virtualFile = position.containingFile.originalFile.virtualFile ?: return
+        val project = position.project
+        val scope = EsphomeIncludeGraph.getInstance(project).connectedFiles(virtualFile)
+        EsphomeIds.getInstance(project).declarationsIn(scope)
+            .filter { EsphomeIdReferences.satisfies(repo, it, referencesComponent) }
+            .forEach { declaration ->
+                val type = declaration.platform?.let { "${declaration.domain}.$it" } ?: declaration.domain
+                result.addElement(LookupElementBuilder.create(declaration.name).withTypeText(type))
+            }
     }
 
     // --- shared ------------------------------------------------------------

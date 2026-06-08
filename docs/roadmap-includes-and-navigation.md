@@ -1,6 +1,7 @@
 # Roadmap: includes, project model, and ID navigation
 
-Status: Phases 1 & 2 done; Phase 3 next (2026-06-08).
+Status: Phases 1–3 done (go-to-def/find-usages/completion; rename deferred);
+Phases 4–5 next (2026-06-08).
 
 The objective: open a top-level ESPHome device YAML and treat its whole
 `!include` graph as a navigable unit — resolve included files, and navigate via
@@ -79,8 +80,22 @@ yet (the optional gutter marker was deferred). Concretely:
 All read PSI/index under a read action. Covered by `EsphomeIncludeGraphTest` and
 `EsphomeIdsTest`.
 
-### Phase 3 — ID navigation
-With the indexes in place:
+### Phase 3 — ID navigation (done, except rename)
+Implemented in `references` + the completion contributor:
+- `EsphomeIdReferences.referencedComponentOf` recognises an id-reference position
+  (value whose field is `type: id` with a `references_component`);
+  `.satisfies` type-matches a declaration via `domain == C` or `C ∈ provides`.
+- `EsphomeIdReferenceContributor` → `EsphomeIdReference`
+  (`PsiPolyVariantReferenceBase`, **soft**) resolves across
+  `EsphomeIncludeGraph.connectedFiles`. Go-to-definition and find-usages work
+  off this; completion offers in-scope, type-matching ids.
+- **Rename deferred**: renaming from a reference works via the manipulator, but
+  initiating rename on the `id:` declaration needs a `RenamePsiElementProcessor`
+  (YAML scalars aren't `PsiNamedElement`). Tracked under hard parts.
+- Tests: `EsphomeIdReferenceTest` (same-file, provides-inheritance, cross-include,
+  undeclared, type-mismatch) + `EsphomeIdCompletionTest`.
+
+Original design notes:
 - **Go-to-definition**: a `PsiReferenceContributor` on scalars in id-*reference*
   positions (catalog field `type == ID && references_component != null`),
   resolving via the ID index filtered to (a) the file's include-graph scope and
