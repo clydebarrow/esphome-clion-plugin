@@ -122,6 +122,32 @@ class EsphomeConfigOutputParserTest {
     }
 
     @Test
+    fun `fragment via root keeps its block errors but drops headerless top-level errors`() {
+        // When a fragment is validated through the device root, a top-level error
+        // belongs to the root and must not be pinned onto the fragment; a block
+        // error reported against the fragment still maps back to it.
+        val out = """
+            Failed config
+
+            Platform not found: 'binary_sensor.gpxo'
+
+            wifi: [source frag.yaml:3]
+              ssid: x
+
+              Bad thing happened.
+              ssid: x
+        """.trimIndent()
+
+        val withTopLevel = EsphomeConfigOutputParser.parse(out, "frag.yaml", includeTopLevelErrors = true)
+        assertTrue(withTopLevel.any { it.message.startsWith("Platform not found") })
+        assertTrue(withTopLevel.any { it.message.startsWith("Bad thing happened") })
+
+        val fragmentOnly = EsphomeConfigOutputParser.parse(out, "frag.yaml", includeTopLevelErrors = false)
+        assertEquals(1, fragmentOnly.size)
+        assertTrue(fragmentOnly[0].message.startsWith("Bad thing happened"))
+    }
+
+    @Test
     fun `empty or success output yields no diagnostics`() {
         assertTrue(EsphomeConfigOutputParser.parse("", "x.yaml").isEmpty())
         assertTrue(EsphomeConfigOutputParser.parse("INFO Configuration is valid!", "x.yaml").isEmpty())

@@ -12,11 +12,14 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiManager
 import io.esphome.clion.psi.EsphomeYaml
+import io.esphome.clion.services.EsphomeIncludeGraph
 import io.esphome.clion.settings.EsphomeSettings
 import org.jetbrains.yaml.psi.YAMLFile
 import java.nio.charset.StandardCharsets
@@ -31,13 +34,47 @@ import java.nio.charset.StandardCharsets
  */
 class EsphomeValidationAnnotator : ExternalAnnotator<EsphomeValidationAnnotator.Info, List<EsphomeDiagnostic>>() {
 
-    data class Info(val file: VirtualFile, val path: String)
+    /**
+     * [targetFile]/[targetPath] is the open file we annotate; [configPath] is what
+     * `esphome config` actually runs on. For a device root they're the same file;
+     * for an `!include`d fragment, [configPath] is the device root that pulls it
+     * in (a fragment is only valid in that context), while diagnostics are still
+     * filtered and mapped back to the fragment.
+     */
+    data class Info(
+        val targetFile: VirtualFile,
+        val targetPath: String,
+        val configPath: String,
+        val workDir: String?,
+    )
 
     override fun collectInformation(file: PsiFile): Info? {
-        if (file !is YAMLFile || !EsphomeYaml.isEsphomeFile(file)) return null
+        if (file !is YAMLFile) return null
         val virtualFile = file.virtualFile ?: return null
         if (!virtualFile.isInLocalFileSystem) return null
-        return Info(virtualFile, virtualFile.path)
+
+        val configFile = if (EsphomeYaml.isEsphomeFile(file)) {
+            virtualFile // a device root validates itself
+        } else {
+            // a fragment compiles only inside a device — validate the root that includes it
+            includingRoot(file.project, virtualFile) ?: return null
+        }
+        return Info(virtualFile, virtualFile.path, configFile.path, configFile.parent?.path)
+    }
+
+    /**
+     * The device root that includes [fragment], if any. Prefers a real ESPHome
+     * config (top-level `esphome:`) among the topmost includers; an orphan
+     * fragment (included by nothing, or no root is a device) yields null and is
+     * not validated, since running it standalone would report spurious errors.
+     */
+    internal fun includingRoot(project: Project, fragment: VirtualFile): VirtualFile? {
+        val psiManager = PsiManager.getInstance(project)
+        return EsphomeIncludeGraph.getInstance(project).rootsOf(fragment)
+            .asSequence()
+            .filter { it != fragment }
+            .filter { root -> (psiManager.findFile(root) as? YAMLFile)?.let(EsphomeYaml::isEsphomeFile) == true }
+            .minByOrNull { it.path }
     }
 
     override fun doAnnotate(info: Info): List<EsphomeDiagnostic> {
@@ -46,17 +83,29 @@ class EsphomeValidationAnnotator : ExternalAnnotator<EsphomeValidationAnnotator.
             warnExecutableMissingOnce()
             return emptyList()
         }
-        flushUnsavedChanges(info.file)
-        val command = GeneralCommandLine(executable, "config", info.path)
+        flushUnsavedChanges(info.targetFile)
+        val command = GeneralCommandLine(executable, "config", info.configPath)
             .withCharset(StandardCharsets.UTF_8)
-        info.file.parent?.path?.let(command::withWorkDirectory)
+        info.workDir?.let(command::withWorkDirectory)
 
         return try {
             val output = CapturingProcessHandler(command).runProcess(TIMEOUT_MS)
+            // Filter to the open file: errors in other files of the graph (incl.
+            // the root) surface when those files are themselves open.
             val diagnostics =
-                if (output.exitCode == 0) emptyList()
-                else EsphomeConfigOutputParser.parse(output.stdout + "\n" + output.stderr, info.path)
-            thisLogger().info("esphome config ${info.path}: exit=${output.exitCode}, ${diagnostics.size} diagnostic(s)")
+                if (output.exitCode == 0) {
+                    emptyList()
+                } else {
+                    EsphomeConfigOutputParser.parse(
+                        output.stdout + "\n" + output.stderr,
+                        info.targetPath,
+                        includeTopLevelErrors = info.configPath == info.targetPath,
+                    )
+                }
+            thisLogger().info(
+                "esphome config ${info.configPath} (for ${info.targetPath}): " +
+                    "exit=${output.exitCode}, ${diagnostics.size} diagnostic(s)",
+            )
             diagnostics
         } catch (e: ExecutionException) {
             thisLogger().warn("Could not run '$executable config'", e)

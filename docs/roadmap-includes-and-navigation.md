@@ -1,7 +1,6 @@
 # Roadmap: includes, project model, and ID navigation
 
-Status: Phases 1–3 done (go-to-def/find-usages/completion; rename deferred);
-Phases 4–5 next (2026-06-08).
+Status: Phases 1–4 done (id rename + Phase 5 inspections remain) (2026-06-08).
 
 The objective: open a top-level ESPHome device YAML and treat its whole
 `!include` graph as a navigable unit — resolve included files, and navigate via
@@ -111,13 +110,16 @@ Original design notes:
   `RenamePsiElementProcessor` for the `id:` declaration, updating all references
   across the graph.
 
-### Phase 4 — graph-aware validation
-Today the annotator runs `esphome config <thisfile>`, which fails on fragments.
-Change `collectInformation`: if the file is a fragment, find its including
-root(s) via the reverse include index and run `esphome config <root>` instead.
-The parser already attributes each error to its *source* file+line (ESPHome
-reports the real file), so a fragment error maps back correctly — minimal parser
-change.
+### Phase 4 — graph-aware validation (done)
+`EsphomeValidationAnnotator.collectInformation` now drops the "must have
+`esphome:`" gate. A device root still validates itself; a fragment is validated
+through the device root that includes it (`includingRoot` = topmost includer
+that is a real ESPHome config, via `EsphomeIncludeGraph.rootsOf`); an orphan
+fragment is skipped. `Info` separates the `configPath` (what `esphome config`
+runs on) from the `targetPath` (the open file we annotate). The parser filters by
+the open file's name, and `parse(…, includeTopLevelErrors = false)` for fragments
+suppresses the root's headerless top-level errors (shown when the root is open).
+Tests: `EsphomeValidationTargetTest` + a parser case.
 
 ### Phase 5 — inspections
 A `LocalInspectionTool` flagging id references that don't resolve in scope (with

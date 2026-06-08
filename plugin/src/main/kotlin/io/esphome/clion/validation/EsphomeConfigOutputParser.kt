@@ -43,7 +43,18 @@ object EsphomeConfigOutputParser {
     private val YAML_KEY = Regex("""^[\w.\-]+:(\s.*)?$""")
     private val QUOTED = Regex("""'([^']+)'""")
 
-    fun parse(output: String, targetFile: String): List<EsphomeDiagnostic> {
+    /**
+     * @param includeTopLevelErrors whether to attribute headerless top-level
+     *   errors (no `[source …]`) to [targetFile]. False when validating a
+     *   fragment via the device root that includes it: a top-level error then
+     *   belongs to the root, not the fragment, so it is surfaced when the root
+     *   itself is open — not pinned onto the fragment.
+     */
+    fun parse(
+        output: String,
+        targetFile: String,
+        includeTopLevelErrors: Boolean = true,
+    ): List<EsphomeDiagnostic> {
         val lines = output.lines()
         val diagnostics = mutableListOf<EsphomeDiagnostic>()
         var failedSeen = false
@@ -69,7 +80,7 @@ object EsphomeConfigOutputParser {
             val trimmed = lines[i].trim()
             if (trimmed == "Failed config") {
                 failedSeen = true
-            } else if (failedSeen && isTopLevelError(lines[i])) {
+            } else if (includeTopLevelErrors && failedSeen && isTopLevelError(lines[i])) {
                 diagnostics += EsphomeDiagnostic(targetFile, 0, trimmed, null, searchToken(trimmed))
             }
             i++
