@@ -41,12 +41,22 @@ private class EsphomeIdReferenceProvider : PsiReferenceProvider() {
         val name = scalar.textValue
         if (name.isEmpty() || name.contains("\${")) return PsiReference.EMPTY_ARRAY
         val repo = EsphomeCatalogService.getInstance().repository
+
+        // Typed reference when the catalog classifies the field (references_component).
         val referencesComponent = EsphomeIdReferences.referencedComponentOf(repo, scalar)
-            ?: return PsiReference.EMPTY_ARRAY
-        return arrayOf(
-            EsphomeIdReference(scalar, ElementManipulators.getValueTextRange(scalar), referencesComponent),
-        )
+        if (referencesComponent != null) {
+            return arrayOf(idReference(scalar, referencesComponent))
+        }
+        // Catalog-less fallback (e.g. lvgl ships no fields): an identifier value
+        // that names a declaration in scope navigates, untyped.
+        if (EsphomeIdReferences.isPotentialIdReference(scalar)) {
+            return arrayOf(idReference(scalar, referencesComponent = null))
+        }
+        return PsiReference.EMPTY_ARRAY
     }
+
+    private fun idReference(scalar: YAMLScalar, referencesComponent: String?) =
+        EsphomeIdReference(scalar, ElementManipulators.getValueTextRange(scalar), referencesComponent)
 }
 
 /**
@@ -54,11 +64,15 @@ private class EsphomeIdReferenceProvider : PsiReferenceProvider() {
  * Poly-variant so a duplicate id surfaces every declaration (Phase 5 can flag
  * it). Soft, so an as-yet-unresolved id is not highlighted as an error — that is
  * an inspection's job, with the leniency substitutions/remote packages need.
+ *
+ * [referencesComponent] is the required component class for a catalog-typed
+ * reference, or null for the catalog-less fallback (match any declaration of the
+ * name, regardless of type).
  */
 class EsphomeIdReference(
     scalar: YAMLScalar,
     rangeInElement: TextRange,
-    private val referencesComponent: String,
+    private val referencesComponent: String?,
 ) : PsiPolyVariantReferenceBase<YAMLScalar>(scalar, rangeInElement, /* soft = */ true) {
 
     override fun multiResolve(incompleteCode: Boolean): Array<ResolveResult> {
@@ -71,7 +85,7 @@ class EsphomeIdReference(
         val repo = EsphomeCatalogService.getInstance().repository
         val psiManager = PsiManager.getInstance(project)
         return EsphomeIds.getInstance(project).resolve(name, scope)
-            .filter { EsphomeIdReferences.satisfies(repo, it, referencesComponent) }
+            .filter { referencesComponent == null || EsphomeIdReferences.satisfies(repo, it, referencesComponent) }
             .mapNotNull { declaration ->
                 val file = psiManager.findFile(declaration.file) ?: return@mapNotNull null
                 val leaf = file.findElementAt(declaration.offset) ?: return@mapNotNull null

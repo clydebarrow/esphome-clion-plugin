@@ -72,6 +72,23 @@ class EsphomeIdReferenceTest : BasePlatformTestCase() {
         assertEquals("bus_a", resolvedNameAt(text, "i2c_id: bus_a", "bus_a"))
     }
 
+    fun `test name-based fallback resolves an id under an unmodeled component`() {
+        // lvgl ships no catalog fields, so `display:` here has no references_component;
+        // the fallback still links the identifier value to the display id declaration.
+        val text = """
+            esphome:
+              name: x
+            display:
+              - platform: ili9xxx
+                id: sdl_display
+            lvgl:
+              displays:
+                - sdl_display
+        """.trimIndent()
+        myFixture.configureByText("device.yaml", text)
+        assertEquals("sdl_display", resolvedNameAt(text, "- sdl_display", "sdl_display"))
+    }
+
     fun `test reference to an undeclared id does not resolve`() {
         val text = """
             esphome:

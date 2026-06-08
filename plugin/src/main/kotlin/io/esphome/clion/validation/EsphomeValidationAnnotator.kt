@@ -53,8 +53,8 @@ class EsphomeValidationAnnotator : ExternalAnnotator<EsphomeValidationAnnotator.
         val virtualFile = file.virtualFile ?: return null
         if (!virtualFile.isInLocalFileSystem) return null
 
-        val configFile = if (EsphomeYaml.isEsphomeFile(file)) {
-            virtualFile // a device root validates itself
+        val configFile = if (EsphomeYaml.isStandaloneConfig(file)) {
+            virtualFile // a device root (esphome:/packages:) validates itself
         } else {
             // a fragment compiles only inside a device — validate the root that includes it
             includingRoot(file.project, virtualFile) ?: return null
@@ -63,17 +63,18 @@ class EsphomeValidationAnnotator : ExternalAnnotator<EsphomeValidationAnnotator.
     }
 
     /**
-     * The device root that includes [fragment], if any. Prefers a real ESPHome
-     * config (top-level `esphome:`) among the topmost includers; an orphan
-     * fragment (included by nothing, or no root is a device) yields null and is
-     * not validated, since running it standalone would report spurious errors.
+     * The device root that includes [fragment], if any. Prefers a standalone
+     * config (top-level `esphome:`/`packages:`) among the topmost includers; an
+     * orphan fragment (included by nothing, or no root is a config) yields null
+     * and is not validated, since running it standalone would report spurious
+     * errors.
      */
     internal fun includingRoot(project: Project, fragment: VirtualFile): VirtualFile? {
         val psiManager = PsiManager.getInstance(project)
         return EsphomeIncludeGraph.getInstance(project).rootsOf(fragment)
             .asSequence()
             .filter { it != fragment }
-            .filter { root -> (psiManager.findFile(root) as? YAMLFile)?.let(EsphomeYaml::isEsphomeFile) == true }
+            .filter { root -> (psiManager.findFile(root) as? YAMLFile)?.let(EsphomeYaml::isStandaloneConfig) == true }
             .minByOrNull { it.path }
     }
 

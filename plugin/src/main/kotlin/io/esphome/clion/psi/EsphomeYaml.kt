@@ -19,12 +19,27 @@ object EsphomeYaml {
     /** Top-level key that marks a file as an ESPHome config. */
     const val MARKER_KEY = "esphome"
 
+    /** Top-level key that pulls in other configs; can itself supply `esphome:`. */
+    const val PACKAGES_KEY = "packages"
+
     /** The discriminator key inside a platform list item (`- platform: dht`). */
     const val PLATFORM_KEY = "platform"
 
     /** True if [file] has a top-level `esphome:` key in any of its documents. */
-    fun isEsphomeFile(file: YAMLFile): Boolean =
-        file.documents.any { topLevelMapping(it)?.getKeyValueByKey(MARKER_KEY) != null }
+    fun isEsphomeFile(file: YAMLFile): Boolean = hasTopLevelKey(file, MARKER_KEY)
+
+    /**
+     * True if [file] is a config ESPHome can compile standalone — it has a
+     * top-level `esphome:`, or a top-level `packages:` (which commonly supplies
+     * the `esphome:` block from a base package, so the main file has none of its
+     * own). Used to decide whether to validate a file directly vs. through the
+     * root that includes it.
+     */
+    fun isStandaloneConfig(file: YAMLFile): Boolean =
+        hasTopLevelKey(file, MARKER_KEY) || hasTopLevelKey(file, PACKAGES_KEY)
+
+    private fun hasTopLevelKey(file: YAMLFile, key: String): Boolean =
+        file.documents.any { topLevelMapping(it)?.getKeyValueByKey(key) != null }
 
     fun topLevelMapping(document: YAMLDocument): YAMLMapping? =
         document.topLevelValue as? YAMLMapping

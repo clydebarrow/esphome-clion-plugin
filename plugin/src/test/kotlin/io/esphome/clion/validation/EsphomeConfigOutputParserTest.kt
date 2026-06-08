@@ -148,6 +148,24 @@ class EsphomeConfigOutputParserTest {
     }
 
     @Test
+    fun `parses an invalid-option error from a packaged fragment`() {
+        // Captured from `esphome config <root>` where a package fragment has an
+        // invalid key — the error is reported against the fragment, line 3.
+        val out = """
+            Failed config
+            lvgl: [source lvgl-package.yaml:3]
+              [display] is an invalid option for [lvgl]. Did you mean [displays]?
+              display:
+                id: sdl_display
+        """.trimIndent()
+        val diagnostics = EsphomeConfigOutputParser.parse(out, "lvgl-package.yaml", includeTopLevelErrors = false)
+        assertEquals(1, diagnostics.size)
+        assertEquals(3, diagnostics[0].anchorLine)
+        assertEquals("display", diagnostics[0].offendingKey)
+        assertTrue(diagnostics[0].message.startsWith("[display] is an invalid option"))
+    }
+
+    @Test
     fun `empty or success output yields no diagnostics`() {
         assertTrue(EsphomeConfigOutputParser.parse("", "x.yaml").isEmpty())
         assertTrue(EsphomeConfigOutputParser.parse("INFO Configuration is valid!", "x.yaml").isEmpty())

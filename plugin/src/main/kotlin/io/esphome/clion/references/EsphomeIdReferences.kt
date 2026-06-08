@@ -47,11 +47,32 @@ object EsphomeIdReferences {
         return referencesComponent in (repo.indexEntry(componentId)?.provides ?: emptyList())
     }
 
-    /** The key/value whose value — a scalar or a list element — is [scalar]. */
+    /**
+     * Whether [scalar] is a plausible *untyped* id reference — an identifier-like
+     * value (not the `id:` declaration itself) under some key. Used for the
+     * catalog-less fallback: some components (notably `lvgl`) ship no schema, so
+     * `references_component` can't classify their id uses. We still let an
+     * identifier value that names a declaration in scope navigate, just without
+     * type filtering.
+     */
+    fun isPotentialIdReference(scalar: YAMLScalar): Boolean {
+        val keyValue = owningKeyValue(scalar) ?: return false
+        if (keyValue.keyText == ID_KEY) return false // a declaration, not a reference
+        return scalar.textValue.matches(ID_TOKEN)
+    }
+
+    /**
+     * The key/value whose **value** — a scalar or a list element — is [scalar].
+     * Returns null when [scalar] is a key (so config keys never get treated as id
+     * references) or anything other than a value.
+     */
     private fun owningKeyValue(scalar: YAMLScalar): YAMLKeyValue? =
         when (val parent = scalar.parent) {
-            is YAMLKeyValue -> parent
+            is YAMLKeyValue -> parent.takeIf { it.value === scalar }
             is YAMLSequenceItem -> parent.parentOfType<YAMLKeyValue>()
             else -> null
         }
+
+    private const val ID_KEY = "id"
+    private val ID_TOKEN = Regex("^[A-Za-z_][A-Za-z0-9_]*$")
 }
