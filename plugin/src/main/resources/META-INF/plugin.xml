@@ -27,6 +27,10 @@
             language="yaml"
             implementationClass="io.esphome.clion.documentation.EsphomeDocumentationProvider"/>
 
+        <psi.referenceContributor
+            language="yaml"
+            implementation="io.esphome.clion.references.EsphomeIncludeReferenceContributor"/>
+
         <applicationConfigurable
             parentId="tools"
             id="io.esphome.clion.settings.EsphomeSettingsConfigurable"
