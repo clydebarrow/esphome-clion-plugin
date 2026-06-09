@@ -69,10 +69,19 @@ private object EsphomeCompletionProvider : CompletionProvider<CompletionParamete
         val position = parameters.position
         // Inside a `${...}` → substitution names (works in fragments too, so this
         // runs before the esphome-file gate).
-        if (addSubstitutionCompletions(parameters, position, result)) return
+        if (addSubstitutionCompletions(parameters, position, result)) {
+            result.stopHere()
+            return
+        }
 
         val file = position.containingFile as? YAMLFile ?: return
         if (!EsphomeYaml.isEsphomeFile(file)) return
+
+        // We drive completion structurally from the catalog, so suppress the
+        // bundled YAML plugin's word-completion fallback — otherwise it pads the
+        // list with in-use ids, sibling keys, and other words scraped from the
+        // file that are irrelevant to the current key/value position.
+        result.stopHere()
 
         val repo = EsphomeCatalogService.getInstance().repository
         val keyValue = position.parentOfType<YAMLKeyValue>()

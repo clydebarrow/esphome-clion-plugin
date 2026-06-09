@@ -52,4 +52,19 @@ class EsphomeCompletionTest : BasePlatformTestCase() {
         val items = complete("foo:\n  bar: 1\n<caret>\n")
         assertDoesntContain(items, "wifi", "sensor")
     }
+
+    /**
+     * The bundled YAML plugin's word-completion fallback otherwise pads the list
+     * with words scraped from the file — in-use ids, sibling keys, values — that
+     * are irrelevant to the current key position. Completion is driven from the
+     * catalog, so those must not appear alongside the real i2c keys.
+     */
+    fun `test bundled yaml word-completion noise is suppressed`() {
+        val items = complete(
+            "esphome:\n  name: x\nwifi:\n  ssid: foo\ni2c:\n  id: bus_a\n  scl: 14\n  s<caret>\n",
+        )
+        assertContainsElements(items, "scan", "sda")
+        // bus_a (an in-use id), ssid (a sibling key), esphome (an in-use key).
+        assertDoesntContain(items, "bus_a", "ssid", "esphome")
+    }
 }
