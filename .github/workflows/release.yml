@@ -39,22 +39,33 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v5
 
-      # Tag v1.2.3 -> 1.2.3 ; manual run -> the dispatch input.
+      # Tag v1.2.3 -> 1.2.3 ; manual run -> the dispatch input. Untrusted input
+      # (the tag name and the dispatch field) is read from env, never spliced
+      # into the script via ${{ }}, so it can't break out of the assignment.
       - name: Resolve version
         id: version
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_VERSION: ${{ github.event.inputs.version }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            VERSION="${{ github.event.inputs.version }}"
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            VERSION="$INPUT_VERSION"
           else
             VERSION="${GITHUB_REF_NAME#v}"
           fi
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          # Pre-release if the version carries a suffix like -rc1 / -beta.
-          if [[ "$VERSION" == *-* ]]; then
-            echo "prerelease=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          # Reject anything that isn't a SemVer-ish string. [[ =~ ]] anchors
+          # against the whole value, so an embedded newline fails the match —
+          # this blocks newline-injection into $GITHUB_OUTPUT and stops a stray
+          # tag/input from producing an invalid release.
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]]; then
+            echo "Invalid version '$VERSION'; expected SemVer like 1.2.3 or 1.2.3-rc1." >&2
+            exit 1
           fi
+          # Pre-release if the version carries a suffix like -rc1 / -beta.
+          if [[ "$VERSION" == *-* ]]; then PRERELEASE=true; else PRERELEASE=false; fi
+          printf 'version=%s\n' "$VERSION" >> "$GITHUB_OUTPUT"
+          printf 'prerelease=%s\n' "$PRERELEASE" >> "$GITHUB_OUTPUT"
 
       # Gate the release on the tests, then assemble the distributable. The
       # build downloads the full ESPHome catalog (vendorCatalog) and the IDE SDK.
