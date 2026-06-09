@@ -152,13 +152,28 @@ data class TriggerEntry(
 }
 
 /**
- * Top-level shape of `automations.index.json`. We model only [triggers] (offered
- * as `on_*` keys); actions/conditions/filters are parsed-over.
+ * An action (e.g. `lvgl.widget.update`, `switch.turn_on`) from
+ * `automations.index.json`. Actions are global — usable in any automation list
+ * — so unlike triggers they carry no `applies_to`.
+ */
+@Serializable
+data class ActionEntry(
+    val id: String,
+    val name: String = "",
+    val description: String = "",
+    @SerialName("docs_url") val docsUrl: String = "",
+)
+
+/**
+ * Top-level shape of `automations.index.json`. We model [triggers] (offered as
+ * `on_*` keys) and [actions] (offered in automation lists); conditions/filters
+ * are parsed-over.
  */
 @Serializable
 data class AutomationsIndex(
     @SerialName("esphome_schema_version") val esphomeSchemaVersion: String = "",
     val triggers: List<TriggerEntry> = emptyList(),
+    val actions: List<ActionEntry> = emptyList(),
 )
 
 /** Full per-component body from `components/<id>.json` (index fields + tree). */

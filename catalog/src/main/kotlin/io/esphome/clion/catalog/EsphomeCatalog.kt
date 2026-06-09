@@ -176,6 +176,9 @@ class CatalogRepository(private val source: CatalogSource) {
             .distinctBy { it.key }
             .toList()
 
+    /** All actions (e.g. `lvgl.widget.update`), offered as keys in automation lists. */
+    val actions: List<ActionEntry> get() = automations.actions
+
     companion object {
         const val INDEX_FILE = "components.index.json"
         const val AUTOMATIONS_INDEX_FILE = "automations.index.json"

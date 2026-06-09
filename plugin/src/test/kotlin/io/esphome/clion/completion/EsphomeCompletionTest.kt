@@ -63,6 +63,15 @@ class EsphomeCompletionTest : BasePlatformTestCase() {
         assertContainsElements(items, "on_touch", "on_release", "on_update")
     }
 
+    /** In an automation list (under a trigger `on_*`), keys are action names. */
+    fun `test actions are suggested in an automation list`() {
+        val items = complete(
+            "esphome:\n  name: x\nbinary_sensor:\n  - platform: gpio\n    pin: 1\n    on_press:\n      - <caret>\n",
+        )
+        if (!items.containsAll(listOf("delay", "logger.log"))) error("got: $items")
+        assertContainsElements(items, "delay", "logger.log", "switch.turn_on")
+    }
+
     fun `test non-esphome yaml is ignored`() {
         val items = complete("foo:\n  bar: 1\n<caret>\n")
         assertDoesntContain(items, "wifi", "sensor")

@@ -158,6 +158,18 @@ private object EsphomeCompletionProvider : CompletionProvider<CompletionParamete
             present = presentKeys(container)
         }
 
+        // Inside an automation list — a sequence under a trigger (`on_*`) or a
+        // `then:`/`else:` — the keys are action names (`lvgl.widget.update`,
+        // `switch.turn_on`). Actions are global, so offer them all.
+        path.lastOrNull()?.let { listKey ->
+            if (listKey.startsWith("on_") || listKey == "then" || listKey == "else") {
+                repo.actions.asSequence()
+                    .filter { it.id !in present }
+                    .forEach { result.addElement(keyLookup(it.id, it.name.ifBlank { null })) }
+                return
+            }
+        }
+
         if (path.isEmpty()) {
             repo.topLevelKeys.asSequence()
                 .filter { it !in present }
