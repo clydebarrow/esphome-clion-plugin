@@ -47,8 +47,24 @@ class EsphomeIdsTest : BasePlatformTestCase() {
         assertEquals("i2c", decls[0].domain)
     }
 
-    fun `test substitution id is not indexed`() {
-        val device = file("p/d.yaml", "esphome:\n  name: x\ni2c:\n  id: \${bus_id}\n  sda: 21\n")
-        assertTrue(ids.declarationsIn(listOf(device)).none { it.domain == "i2c" })
+    fun `test templated id is indexed and expands to its effective name`() {
+        val device = file(
+            "p/d.yaml",
+            "substitutions:\n  bus: i2c0\nesphome:\n  name: x\ni2c:\n  id: \${bus}_bus\n  sda: 21\n",
+        )
+        val decl = ids.declarationsIn(listOf(device)).single { it.domain == "i2c" }
+        assertEquals("\${bus}_bus", decl.name)
+        assertEquals("i2c0_bus", decl.effectiveName)
+    }
+
+    fun `test reference resolves to a templated declaration by effective name`() {
+        // The declaration is templated; a literal reference to its expanded name resolves.
+        val device = file(
+            "p/d.yaml",
+            "substitutions:\n  bus: i2c0\ni2c:\n  id: \${bus}_bus\n  sda: 21\n  scl: 22\n",
+        )
+        val decls = ids.resolve("i2c0_bus", listOf(device))
+        assertEquals(1, decls.size)
+        assertEquals("i2c", decls[0].domain)
     }
 }

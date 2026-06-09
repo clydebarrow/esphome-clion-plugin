@@ -52,8 +52,10 @@ class EsphomeIdIndex : FileBasedIndexExtension<String, IdDeclaration>() {
         for (keyValue in PsiTreeUtil.findChildrenOfType(yaml, YAMLKeyValue::class.java)) {
             if (keyValue.keyText != ID_KEY) continue
             val value = keyValue.value as? YAMLScalar ?: continue
+            // Templated names (`id: ${prefix}_relay`) are indexed raw and expanded
+            // at query time (the index is per-file, so it can't resolve them here).
             val name = value.textValue
-            if (name.isEmpty() || name.contains("\${")) continue
+            if (name.isEmpty()) continue
             val parentMapping = keyValue.parent as? YAMLMapping ?: continue
             val domain = EsphomeYaml.pathOfMapping(parentMapping).firstOrNull() ?: continue
             val platform = EsphomeYaml.platformOf(keyValue)

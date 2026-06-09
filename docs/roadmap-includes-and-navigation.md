@@ -158,11 +158,21 @@ Tests: `EsphomeValidationTargetTest` + a parser case.
 - Tests: `EsphomeSubstitutionTest`, `EsphomeSubstitutionInspectionTest`,
   `EsphomeSubstitutionCompletionTest`.
 
+### Phase 6b — substitution value resolution (done)
+Templated ids now participate in resolution. The id index stores the raw name
+(`${prefix}_relay`); `EsphomeIds.declarationsIn` expands it at query time
+(`Declaration.effectiveName`) using `EsphomeSubstitutions.expand(text, defs)`.
+References expand their own text before matching, so a templated reference and a
+templated declaration both resolve by effective name. Completion offers expanded
+names. The unresolved-id inspection matches on `effectiveName` and stays quiet
+only when the reference or some declaration can't be fully expanded (replacing
+the old blanket "any templated id in scope" suppression).
+
 ## Status: phases 1–6 complete
 
-Possible future work: substitution **value** resolution feeding the id index (so
-`id: ${x}_y` indexes/validates); find-usages/rename of substitution variables;
-id completion inside schema-less components (lvgl); remote (`github://`) packages.
+Possible future work: find-usages/rename of substitution variables and of
+templated ids; id completion inside schema-less components (lvgl); remote
+(`github://`) packages.
 
 ## Known hard parts / risks
 

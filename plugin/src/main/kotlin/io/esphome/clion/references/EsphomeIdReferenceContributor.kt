@@ -17,6 +17,7 @@ import com.intellij.util.ProcessingContext
 import io.esphome.clion.services.EsphomeCatalogService
 import io.esphome.clion.services.EsphomeIds
 import io.esphome.clion.services.EsphomeIncludeGraph
+import io.esphome.clion.services.EsphomeSubstitutions
 import org.jetbrains.yaml.psi.YAMLScalar
 
 /**
@@ -38,11 +39,12 @@ class EsphomeIdReferenceContributor : PsiReferenceContributor() {
 private class EsphomeIdReferenceProvider : PsiReferenceProvider() {
     override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<PsiReference> {
         val scalar = element as? YAMLScalar ?: return PsiReference.EMPTY_ARRAY
-        val name = scalar.textValue
-        if (name.isEmpty() || name.contains("\${")) return PsiReference.EMPTY_ARRAY
+        if (scalar.textValue.isEmpty()) return PsiReference.EMPTY_ARRAY
         val repo = EsphomeCatalogService.getInstance().repository
 
         // Typed reference when the catalog classifies the field (references_component).
+        // Templated values (`output: ${prefix}_relay`) are allowed here and expanded
+        // at resolve time.
         val referencesComponent = EsphomeIdReferences.referencedComponentOf(repo, scalar)
         if (referencesComponent != null) {
             return arrayOf(idReference(scalar, referencesComponent))
@@ -77,10 +79,17 @@ class EsphomeIdReference(
 
     override fun multiResolve(incompleteCode: Boolean): Array<ResolveResult> {
         val scalar = element
-        val name = scalar.textValue
-        if (name.isEmpty()) return ResolveResult.EMPTY_ARRAY
+        val raw = scalar.textValue
+        if (raw.isEmpty()) return ResolveResult.EMPTY_ARRAY
         val virtualFile = scalar.containingFile?.originalFile?.virtualFile ?: return ResolveResult.EMPTY_ARRAY
         val project = scalar.project
+        // Expand `${...}` in the reference so a templated reference resolves to the
+        // declaration by its effective name; a still-unresolved name won't match.
+        val name = if (raw.contains('$')) {
+            EsphomeSubstitutions.getInstance(project).expandText(raw, virtualFile)
+        } else {
+            raw
+        }
         val scope = EsphomeIncludeGraph.getInstance(project).connectedFiles(virtualFile)
         val repo = EsphomeCatalogService.getInstance().repository
         val psiManager = PsiManager.getInstance(project)

@@ -216,9 +216,10 @@ private object EsphomeCompletionProvider : CompletionProvider<CompletionParamete
         val scope = EsphomeIncludeGraph.getInstance(project).connectedFiles(virtualFile)
         EsphomeIds.getInstance(project).declarationsIn(scope)
             .filter { EsphomeIdReferences.satisfies(repo, it, referencesComponent) }
+            .filter { !it.effectiveName.contains('$') } // skip ids we couldn't fully expand
             .forEach { declaration ->
                 val type = declaration.platform?.let { "${declaration.domain}.$it" } ?: declaration.domain
-                result.addElement(LookupElementBuilder.create(declaration.name).withTypeText(type))
+                result.addElement(LookupElementBuilder.create(declaration.effectiveName).withTypeText(type))
             }
     }
 

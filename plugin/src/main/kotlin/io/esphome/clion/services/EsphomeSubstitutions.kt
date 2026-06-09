@@ -29,10 +29,14 @@ class EsphomeSubstitutions(private val project: Project) {
     data class Definition(val name: String, val keyValue: YAMLKeyValue, val file: VirtualFile)
 
     /** All substitutions visible from [file], keyed by name (first definition wins). */
-    fun definitionsInScope(file: VirtualFile): Map<String, Definition> {
+    fun definitionsInScope(file: VirtualFile): Map<String, Definition> =
+        definitionsIn(EsphomeIncludeGraph.getInstance(project).connectedFiles(file))
+
+    /** As [definitionsInScope], but over an already-computed set of [files]. */
+    fun definitionsIn(files: Collection<VirtualFile>): Map<String, Definition> {
         val result = LinkedHashMap<String, Definition>()
         val psiManager = PsiManager.getInstance(project)
-        for (vf in EsphomeIncludeGraph.getInstance(project).connectedFiles(file)) {
+        for (vf in files) {
             val yaml = psiManager.findFile(vf) as? YAMLFile ?: continue
             for (document in yaml.documents) {
                 val block = EsphomeYaml.topLevelMapping(document)
@@ -72,17 +76,32 @@ class EsphomeSubstitutions(private val project: Project) {
     }
 
     /** The value of [name], with any nested `${...}` expanded; null if undefined. */
-    fun valueOf(name: String, file: VirtualFile): String? =
-        expand(name, definitionsInScope(file), HashSet())
-
-    private fun expand(name: String, defs: Map<String, Definition>, seen: MutableSet<String>): String? {
-        if (!seen.add(name)) return null // cycle
+    fun valueOf(name: String, file: VirtualFile): String? {
+        val defs = definitionsInScope(file)
         val raw = (defs[name]?.keyValue?.value as? YAMLScalar)?.textValue ?: return null
-        return EsphomeSubstitutionSyntax.PATTERN.replace(raw) { match ->
-            val inner = match.groupValues[1].ifEmpty { match.groupValues[2] }
-            expand(inner, defs, seen) ?: match.value
-        }
+        return expand(raw, defs)
     }
+
+    /**
+     * Expand every `${name}`/`$name` in [text] against [definitions], recursively
+     * and cycle-safely. Names with no definition are left verbatim, so a result
+     * still containing `${…}` signals an unresolved substitution.
+     */
+    fun expand(text: String, definitions: Map<String, Definition>): String =
+        expandIn(text, definitions, HashSet())
+
+    /** Convenience: expand [text] against the substitutions visible from [file]. */
+    fun expandText(text: String, file: VirtualFile): String = expand(text, definitionsInScope(file))
+
+    private fun expandIn(text: String, defs: Map<String, Definition>, seen: MutableSet<String>): String =
+        EsphomeSubstitutionSyntax.PATTERN.replace(text) { match ->
+            val name = match.groupValues[1].ifEmpty { match.groupValues[2] }
+            if (!seen.add(name)) return@replace match.value // cycle
+            val raw = (defs[name]?.keyValue?.value as? YAMLScalar)?.textValue
+            val expanded = if (raw != null) expandIn(raw, defs, seen) else match.value
+            seen.remove(name)
+            expanded
+        }
 
     companion object {
         private const val VARS_KEY = "vars"

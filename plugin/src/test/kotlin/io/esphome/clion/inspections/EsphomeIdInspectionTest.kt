@@ -75,7 +75,7 @@ class EsphomeIdInspectionTest : BasePlatformTestCase() {
         assertTrue(myFixture.file.text.contains("output: relay_out"))
     }
 
-    fun `test templated ids suppress unresolved flagging`() {
+    fun `test reference to an expanded templated id resolves`() {
         myFixture.enableInspections(EsphomeUnresolvedIdInspection())
         myFixture.configureByText(
             "device.yaml",
@@ -91,7 +91,29 @@ class EsphomeIdInspectionTest : BasePlatformTestCase() {
             light:
               - platform: binary
                 name: L
-                output: relay_b
+                output: relay_a
+            """.trimIndent(),
+        )
+        assertFalse(descriptions().any { it.contains("Cannot resolve id reference") })
+    }
+
+    fun `test unexpandable templated declaration suppresses flagging`() {
+        // `suffix` is undefined, so the templated id can't be expanded — stay quiet
+        // rather than risk flagging a reference that legitimately matches it.
+        myFixture.enableInspections(EsphomeUnresolvedIdInspection())
+        myFixture.configureByText(
+            "device.yaml",
+            """
+            esphome:
+              name: x
+            output:
+              - platform: gpio
+                id: relay_${'$'}{suffix}
+                pin: 4
+            light:
+              - platform: binary
+                name: L
+                output: relay_x
             """.trimIndent(),
         )
         assertFalse(descriptions().any { it.contains("Cannot resolve id reference") })

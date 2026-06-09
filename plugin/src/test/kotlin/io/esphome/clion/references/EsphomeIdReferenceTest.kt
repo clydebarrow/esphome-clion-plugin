@@ -89,6 +89,29 @@ class EsphomeIdReferenceTest : BasePlatformTestCase() {
         assertEquals("sdl_display", resolvedNameAt(text, "- sdl_display", "sdl_display"))
     }
 
+    fun `test templated reference resolves via substitution expansion`() {
+        val text = """
+            esphome:
+              name: x
+            substitutions:
+              suffix: a
+            output:
+              - platform: gpio
+                id: relay_a
+                pin: 4
+            light:
+              - platform: binary
+                name: L
+                output: relay_${'$'}{suffix}
+        """.trimIndent()
+        myFixture.configureByText("device.yaml", text)
+        // Click the literal `relay_` part of the templated reference value, which
+        // only the id reference covers; it expands to `relay_a` and resolves.
+        val offset = text.indexOf("output: relay_") + "output: rel".length
+        val resolved = myFixture.file.findReferenceAt(offset)?.resolve() as? YAMLScalar
+        assertEquals("relay_a", resolved?.textValue)
+    }
+
     fun `test reference to an undeclared id does not resolve`() {
         val text = """
             esphome:
