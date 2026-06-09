@@ -1,0 +1,107 @@
+{
+  "id": "lvgl",
+  "name": "LVGL",
+  "description": "LVGL graphics component.",
+  "category": "misc",
+  "docs_url": "https://esphome.io/components/lvgl/",
+  "dependencies": [
+    "display"
+  ],
+  "config_entries": [
+    {
+      "key": "displays",
+      "type": "id",
+      "label": "Displays",
+      "advanced": true
+    },
+    {
+      "key": "bg_color",
+      "type": "string",
+      "label": "Bg Color",
+      "display_format": null,
+      "advanced": true
+    },
+    {
+      "key": "color_depth",
+      "type": "string",
+      "label": "Color Depth",
+      "default_value": "16",
+      "options": [
+        {
+          "label": "16",
+          "value": "16"
+        }
+      ],
+      "display_format": null,
+      "advanced": true
+    },
+    {
+      "key": "default_font",
+      "type": "string",
+      "label": "Default Font",
+      "default_value": "montserrat_14",
+      "display_format": null,
+      "advanced": true
+    },
+    {
+      "key": "full_refresh",
+      "type": "boolean",
+      "label": "Full Refresh",
+      "default_value": false,
+      "display_format": null,
+      "advanced": true
+    },
+    {
+      "key": "pages",
+      "type": "string",
+      "label": "Pages",
+      "display_format": null,
+      "multi_value": true,
+      "advanced": true
+    },
+    {
+      "key": "touchscreens",
+      "type": "string",
+      "label": "Touchscreens",
+      "display_format": null,
+      "advanced": true
+    },
+    {
+      "key": "style_definitions",
+      "type": "nested",
+      "label": "Style Definitions",
+      "display_format": null,
+      "multi_value": true,
+      "advanced": true,
+      "config_entries": [
+        {
+          "key": "id",
+          "type": "id",
+          "label": "ID",
+          "required": true
+        },
+        {
+          "key": "bg_color",
+          "type": "string",
+          "label": "Bg Color",
+          "display_format": null,
+          "advanced": true
+        },
+        {
+          "key": "border_width",
+          "type": "string",
+          "label": "Border Width",
+          "display_format": null,
+          "advanced": true
+        },
+        {
+          "key": "radius",
+          "type": "string",
+          "label": "Radius",
+          "display_format": null,
+          "advanced": true
+        }
+      ]
+    }
+  ]
+}

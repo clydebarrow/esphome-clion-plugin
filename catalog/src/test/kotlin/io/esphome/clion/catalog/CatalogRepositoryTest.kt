@@ -9,7 +9,7 @@ import kotlin.test.assertTrue
 /**
  * The derived views the completion contributor relies on: top-level key set,
  * platform domains, and per-domain platforms. Fixture index contains `wifi`
- * (core), `i2c` (bus), `switch.gpio`, `sensor.dht`.
+ * (core), `i2c` (bus), `switch.gpio`, `sensor.dht`, `lvgl` (misc).
  */
 class CatalogRepositoryTest {
 
@@ -29,8 +29,35 @@ class CatalogRepositoryTest {
 
     @Test
     fun `top-level keys are non-platform components plus domains`() {
-        // wifi + i2c (non-platform) and switch + sensor (domains).
-        assertEquals(setOf("wifi", "i2c", "switch", "sensor"), repo().topLevelKeys)
+        // wifi + i2c + lvgl (non-platform) and switch + sensor (domains).
+        assertEquals(setOf("wifi", "i2c", "lvgl", "switch", "sensor"), repo().topLevelKeys)
+    }
+
+    /**
+     * lvgl is the stress case for the catalog: upstream its schema is generated
+     * from `extends` chains (the base obj style/state schema reused across every
+     * widget/part/state), which device-builder flattens into a config_entries
+     * list before we vendor it. This asserts that the real flattened lvgl body —
+     * once a near-empty stub — now exposes its top-level fields with the right
+     * types, so completion/validation of the `lvgl:` block actually works.
+     */
+    @Test
+    fun `lvgl exposes flattened top-level fields with resolved types`() {
+        val lvgl = checkNotNull(repo().component("lvgl")) { "lvgl body missing" }
+        val byKey = checkNotNull(lvgl.configEntries).associateBy { it.key }
+
+        // displays is an id reference (drives id navigation/completion), not a string.
+        assertEquals(ConfigEntryType.ID, byKey.getValue("displays").type)
+        assertEquals(ConfigEntryType.STRING, byKey.getValue("bg_color").type)
+        assertEquals(ConfigEntryType.BOOLEAN, byKey.getValue("full_refresh").type)
+        // color_depth resolved its `one_of(16)` into an options list.
+        assertTrue(byKey.getValue("color_depth").options?.isNotEmpty() == true)
+
+        // style_definitions is a nested block whose children resolved through the
+        // FULL_STYLE_SCHEMA `extends` — reachable via the nested-path API.
+        assertEquals(ConfigEntryType.NESTED, byKey.getValue("style_definitions").type)
+        val childKeys = lvgl.childEntriesAt(listOf("style_definitions")).map { it.key }
+        assertTrue("border_width" in childKeys, "style child keys: $childKeys")
     }
 
     @Test
