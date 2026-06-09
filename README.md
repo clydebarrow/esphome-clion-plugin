@@ -84,10 +84,13 @@ manual version edit is needed. A tag with a pre-release suffix (e.g.
 `v0.7.0-rc1`) is published as a GitHub pre-release. Every push and pull request
 to `main` also runs the test suites via `.github/workflows/ci.yml`.
 
-## Catalog data & licensing
+## License
 
+This project is licensed under the Apache License 2.0 — see [`LICENSE`](LICENSE).
+
+The bundled ESPHome catalog data is also Apache-2.0, from a separate upstream:
 `plugin/src/main/resources/esphome/definitions/` (committed subset) and the
 `vendorCatalog` output come from
-[esphome/device-builder](https://github.com/esphome/device-builder) (Apache-2.0;
-see the bundled `LICENSE` and `ATTRIBUTION.md`). The pin is recorded in
-`gradle.properties` (`esphomeDeviceBuilderRef`).
+[esphome/device-builder](https://github.com/esphome/device-builder) (see the
+bundled `esphome/definitions/LICENSE` and `ATTRIBUTION.md`). The pin is recorded
+in `gradle.properties` (`esphomeDeviceBuilderRef`).
