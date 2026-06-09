@@ -1,7 +1,8 @@
-# ESPHome CLion plugin
+# ESPHome plugin for JetBrains IDEs
 
-JetBrains CLion plugin for ESPHome YAML device configs: completion, hover
-documentation, and validation. See
+JetBrains IDE plugin for ESPHome YAML device configs: completion, hover
+documentation, validation, and navigation. Works in CLion, IntelliJ IDEA,
+PyCharm, and other compatible IDEs (2024.2+). See
 [`docs/esphome-data-sources.md`](docs/esphome-data-sources.md) for the data
 architecture and why this does **not** use a JSON Schema.
 
@@ -9,7 +10,7 @@ architecture and why this does **not** use a JSON Schema.
 
 Download the latest plugin zip from the
 [**Releases**](https://github.com/clydebarrow/esphome-clion-plugin/releases/latest)
-page (don't unzip it), then in CLion go to **Settings → Plugins → ⚙ → Install
+page (don't unzip it), then in your JetBrains IDE go to **Settings → Plugins → ⚙ → Install
 Plugin from Disk…**, select the zip, and restart. If validation is quiet, set
 your esphome binary under **Settings → Tools → ESPHome** (it's auto-detected from
 `PATH` otherwise). Open any config with a top-level `esphome:` key to activate it.

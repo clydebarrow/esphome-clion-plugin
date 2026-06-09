@@ -1,13 +1,16 @@
 <idea-plugin>
-    <id>io.esphome.clion</id>
+    <!-- Plugin ID must not contain a JetBrains product name (e.g. "clion"),
+         per Marketplace rules; the io.esphome.clion.* Kotlin packages are
+         unaffected. The ID is permanent once published. -->
+    <id>io.esphome.plugin</id>
     <name>ESPHome</name>
     <vendor email="clyde@stubbs.me" url="https://esphome.io">Clyde Stubbs</vendor>
 
     <description><![CDATA[
-        <p>ESPHome configuration support for CLion.</p>
-        <p>Provides completion (and, in later phases, documentation and
-        validation) for ESPHome YAML device configurations, driven by the
-        ESPHome component catalog.</p>
+        <p>ESPHome configuration support for JetBrains IDEs.</p>
+        <p>Provides completion, documentation, validation, and navigation for
+        ESPHome YAML device configurations, driven by the ESPHome component
+        catalog.</p>
     ]]></description>
 
     <!-- YAML PSI/parsing comes from the bundled YAML plugin (present in CLion). -->
