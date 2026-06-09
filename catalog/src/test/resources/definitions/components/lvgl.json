@@ -12,7 +12,8 @@
       "key": "displays",
       "type": "id",
       "label": "Displays",
-      "advanced": true
+      "advanced": true,
+      "references_component": "display"
     },
     {
       "key": "bg_color",

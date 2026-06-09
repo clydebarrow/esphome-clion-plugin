@@ -145,18 +145,24 @@ val overlayCatalog by tasks.registering {
         // Relabel the lvgl entry in the vendored index (device-builder mislabels
         // it from the id collision with its platform entries). Target id=="lvgl"
         // specifically — "LVGL Light" is also a legit name for the lvgl.light row.
+        // Safe casts (the index shape could change across refs) and only rewrite
+        // the file when the lvgl entry actually differs.
         val indexFile = outDir.resolve("esphome/definitions/components.index.json")
         if (indexFile.exists()) {
             val root = groovy.json.JsonSlurper().parse(indexFile)
+            val components = (root as? Map<*, *>)?.get("components") as? List<*>
             @Suppress("UNCHECKED_CAST")
-            val components = (root as Map<String, Any?>)["components"] as List<MutableMap<String, Any?>>
-            components.firstOrNull { it["id"] == "lvgl" }?.apply {
-                this["name"] = "LVGL"
-                this["description"] =
-                    "LVGL graphics: displays, pages, widgets, styles and triggers under lvgl:."
-                this["docs_url"] = "https://esphome.io/components/lvgl/"
+            val lvgl = components
+                ?.firstOrNull { (it as? Map<*, *>)?.get("id") == "lvgl" } as? MutableMap<String, Any?>
+            val desired = mapOf(
+                "name" to "LVGL",
+                "description" to "LVGL graphics: displays, pages, widgets, styles and triggers under lvgl:.",
+                "docs_url" to "https://esphome.io/components/lvgl/",
+            )
+            if (lvgl != null && desired.any { (k, v) -> lvgl[k] != v }) {
+                lvgl.putAll(desired)
+                indexFile.writeText(groovy.json.JsonOutput.toJson(root))
             }
-            indexFile.writeText(groovy.json.JsonOutput.toJson(root))
         }
     }
 }

@@ -37,17 +37,25 @@ class CatalogRepositoryTest {
      * lvgl is the stress case for the catalog: upstream its schema is generated
      * from `extends` chains (the base obj style/state schema reused across every
      * widget/part/state), which device-builder flattens into a config_entries
-     * list before we vendor it. This asserts that the real flattened lvgl body —
-     * once a near-empty stub — now exposes its top-level fields with the right
-     * types, so completion/validation of the `lvgl:` block actually works.
+     * list before we vendor it. This mirrors the shipped lvgl body (the build's
+     * `overlayCatalog` slice) and asserts it exposes its top-level fields with the
+     * right types, so completion/validation of the `lvgl:` block actually works.
+     *
+     * Note `displays`' `references_component` is supplied by the overlay: lvgl
+     * declares it via a custom `display_schema` validator the upstream schema
+     * dumper can't see through, so device-builder emits a bare `id` with no target
+     * class. The overlay restores the `display` target so id navigation works.
      */
     @Test
     fun `lvgl exposes flattened top-level fields with resolved types`() {
         val lvgl = checkNotNull(repo().component("lvgl")) { "lvgl body missing" }
         val byKey = checkNotNull(lvgl.configEntries).associateBy { it.key }
 
-        // displays is an id reference (drives id navigation/completion), not a string.
-        assertEquals(ConfigEntryType.ID, byKey.getValue("displays").type)
+        // displays is a typed id reference to display ids — type ID *and*
+        // references_component "display" together drive id navigation/completion.
+        val displays = byKey.getValue("displays")
+        assertEquals(ConfigEntryType.ID, displays.type)
+        assertEquals("display", displays.referencesComponent)
         assertEquals(ConfigEntryType.STRING, byKey.getValue("bg_color").type)
         assertEquals(ConfigEntryType.BOOLEAN, byKey.getValue("full_refresh").type)
         // color_depth resolved its `one_of(16)` into an options list.
