@@ -117,6 +117,50 @@ val vendorCatalog by tasks.registering {
     }
 }
 
+// --- Temporary lvgl catalog overlay -----------------------------------------
+//
+// The pinned device-builder catalog (esphomeDeviceBuilderRef) still ships a
+// near-empty `lvgl` body: zero config_entries, so the `lvgl:` block gets no
+// completion/validation. The root cause is an upstream esphome schema bug, fixed
+// on the `lvgl-schema` branch but not yet in a device-builder release. Until the
+// ref can be bumped, overlay a locally-regenerated lvgl.json (193 config_entries,
+// produced by running device-builder's sync against the patched schema) on top
+// of the vendored catalog, and relabel the mislabeled lvgl index entry. Remove
+// this task and `plugin/catalog-overlay/` once esphomeDeviceBuilderRef points at
+// a release regenerated from the fixed schema.
+val catalogOverlayDir = layout.projectDirectory.dir("catalog-overlay")
+val overlayCatalog by tasks.registering {
+    description = "Overlay locally-regenerated catalog bodies (lvgl) onto the vendored catalog."
+    group = "build"
+    dependsOn(vendorCatalog)
+    val overlay = catalogOverlayDir.asFile
+    val outDir = catalogGenDir.get().asFile
+    inputs.dir(catalogOverlayDir)
+    doLast {
+        copy {
+            from(overlay)
+            into(outDir)
+            duplicatesStrategy = DuplicatesStrategy.INCLUDE
+        }
+        // Relabel the lvgl entry in the vendored index (device-builder mislabels
+        // it from the id collision with its platform entries). Target id=="lvgl"
+        // specifically — "LVGL Light" is also a legit name for the lvgl.light row.
+        val indexFile = outDir.resolve("esphome/definitions/components.index.json")
+        if (indexFile.exists()) {
+            val root = groovy.json.JsonSlurper().parse(indexFile)
+            @Suppress("UNCHECKED_CAST")
+            val components = (root as Map<String, Any?>)["components"] as List<MutableMap<String, Any?>>
+            components.firstOrNull { it["id"] == "lvgl" }?.apply {
+                this["name"] = "LVGL"
+                this["description"] =
+                    "LVGL graphics: displays, pages, widgets, styles and triggers under lvgl:."
+                this["docs_url"] = "https://esphome.io/components/lvgl/"
+            }
+            indexFile.writeText(groovy.json.JsonOutput.toJson(root))
+        }
+    }
+}
+
 // Generated catalog is an additional resource root; when populated it overrides
 // the committed subset (last-wins). `vendorCatalog` is up-to-date-cached on the
 // pinned ref, so it downloads once and is skipped thereafter (offline builds
@@ -125,6 +169,6 @@ sourceSets.named("main") {
     resources.srcDir(catalogGenDir)
 }
 tasks.processResources {
-    dependsOn(vendorCatalog)
+    dependsOn(vendorCatalog, overlayCatalog)
     duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }
