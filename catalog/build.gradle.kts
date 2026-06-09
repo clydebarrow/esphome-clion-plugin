@@ -21,6 +21,8 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    // Forward the optional langschema.dir prototype property to the test JVM.
+    providers.systemProperty("langschema.dir").orNull?.let { systemProperty("langschema.dir", it) }
 }
 
 kotlin {
