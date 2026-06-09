@@ -63,6 +63,15 @@ class EsphomeCompletionTest : BasePlatformTestCase() {
         assertContainsElements(items, "on_touch", "on_release", "on_update")
     }
 
+    /**
+     * The `lvgl:` root is the active-screen obj, so its obj-level event triggers
+     * are valid there. They come from the (overlaid) automations index.
+     */
+    fun `test lvgl root triggers are suggested`() {
+        val items = complete("esphome:\n  name: x\nlvgl:\n  <caret>\n")
+        assertContainsElements(items, "on_boot", "on_all_events")
+    }
+
     /** In an automation list (under a trigger `on_*`), keys are action names. */
     fun `test actions are suggested in an automation list`() {
         val items = complete(
