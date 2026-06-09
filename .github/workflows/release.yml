@@ -93,7 +93,9 @@ jobs:
       # Tag pushes: publish the release with the zip attached.
       - name: Publish GitHub release
         if: github.event_name == 'push'
-        uses: softprops/action-gh-release@v2
+        # Pinned to a full commit SHA (supply-chain hygiene for a third-party
+        # action); v3.0.0 is the Node 24 runtime, clearing the Node 20 warning.
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
           files: ${{ steps.dist.outputs.zip }}
           prerelease: ${{ steps.version.outputs.prerelease }}
