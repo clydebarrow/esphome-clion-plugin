@@ -3,15 +3,13 @@ import java.net.URI
 
 // The ESPHome CLion plugin. Uses the IntelliJ Platform Gradle Plugin (2.x).
 //
-// Version notes for this spike:
-// - IntelliJ Platform Gradle Plugin 2.5.0 is the last line that runs on
-//   Gradle 8.x (2.6+ requires Gradle 9). Keeping the repo on Gradle 8.13 lets
-//   the fast :catalog module stay on the toolchain we already have.
-// - Targets CLion 2024.1 (build 241), which runs on JDK 17 — matching the JDK
-//   available here. Bumping to CLion 2024.2+ would require JDK 21 to build.
+// Toolchain: IntelliJ Platform Gradle Plugin 2.16 + Gradle 9 + Kotlin 2.2 +
+// JDK 21, building natively against CLion 2026.1 (the user's IDE). JDK 21 is
+// required for IDEs from 2024.2 onward (they run on JBR 21). The IDE target is
+// property-driven (gradle.properties): default `CL` / 2026.1.1.
 plugins {
     kotlin("jvm")
-    id("org.jetbrains.intellij.platform") version "2.5.0"
+    id("org.jetbrains.intellij.platform") version "2.16.0"
 }
 
 // Plugin version: patched into plugin.xml's <version> and used in the
@@ -26,13 +24,12 @@ repositories {
 }
 
 // IDE target is property-driven so retargeting needs no code edits.
-//   Default (dev, verifiable here): IDEA Community, JDK 17, plugin 2.5.0.
-//   CLion (production): -PideType=CL -PideVersion=2024.3 — see README for the
-//   accompanying toolchain (plugin >= 2.6, Gradle 9, JDK 21). The plugin uses
-//   only IntelliJ Platform + bundled-YAML APIs, so a build against IDEA loads
-//   unchanged in CLion.
-val ideType: Provider<String> = providers.gradleProperty("ideType").orElse("IC")
-val ideVersion: Provider<String> = providers.gradleProperty("ideVersion").orElse("2024.1.7")
+//   Default: CLion 2026.1.1 (the user's IDE) — see gradle.properties.
+//   IDEA Community instead: -PideType=IC -PideVersion=2026.1.1.
+// The plugin uses only IntelliJ Platform + bundled-YAML APIs, so it also loads in
+// IDEA/PyCharm/etc. of a compatible build.
+val ideType: Provider<String> = providers.gradleProperty("ideType").orElse("CL")
+val ideVersion: Provider<String> = providers.gradleProperty("ideVersion").orElse("2026.1.1")
 
 dependencies {
     intellijPlatform {
@@ -54,18 +51,17 @@ intellijPlatform {
     buildSearchableOptions = false
     pluginConfiguration {
         ideaVersion {
-            // Compiled against the 241 API baseline (newest buildable on JDK 17),
-            // but the APIs used are stable, so allow installing into newer IDEs
-            // (e.g. CLion 2026.1 / build 261). For a build truly compiled against
-            // a newer CLion, see README "Targeting CLion".
-            sinceBuild = "241"
+            // Compiled against CLion 2026.1 (build 261) on JDK 21. Bytecode 21
+            // needs JBR 21, i.e. IDEs from 2024.2 (build 242) onward; the APIs
+            // used are stable across that range.
+            sinceBuild = "242"
             untilBuild = "261.*"
         }
     }
 }
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(21)
 }
 
 // Name the distribution after the product, not the Gradle module (":plugin"),

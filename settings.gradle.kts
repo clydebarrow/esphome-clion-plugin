@@ -1,3 +1,9 @@
+// Lets Gradle locate (or download) the JDK 21 toolchain the build requires on
+// any machine/CI, so no JDK path is hardcoded.
+plugins {
+    id("org.gradle.toolchains.foojay-resolver-convention") version "0.9.0"
+}
+
 rootProject.name = "esphome-clion-plugin"
 
 // Repositories are declared per-module (catalog needs only Maven Central; the

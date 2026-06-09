@@ -49,27 +49,25 @@ isn't on PATH).
   ESPHome release into generated resources; a small committed subset is the
   offline fallback.
 
-## Targeting CLion
+## Toolchain & build target
 
-The build is property-driven (`gradle.properties`). The default targets IntelliJ
-IDEA Community, which resolves on this repo's pinned toolchain (Gradle 8.13 +
-IntelliJ Platform Gradle Plugin 2.5.0 + JDK 17). The plugin uses only IntelliJ
-Platform + bundled-YAML APIs, so an IDEA build loads unchanged in CLion.
+The build runs on **Gradle 9 + IntelliJ Platform Gradle Plugin 2.16 + Kotlin 2.2
++ a JDK 21 toolchain**, and targets **CLion 2026.1** by default. JDK 21 is
+required for IDEs from 2024.2 onward (they run on JBR 21). The JDK 21 toolchain
+is located/downloaded automatically via the
+[foojay resolver](https://github.com/gradle/foojay-toolchains) (configured in
+`settings.gradle.kts`), so no JDK path is hardcoded and CI works out of the box.
 
-To build against CLion:
+The IDE target is property-driven (`gradle.properties`). To build against IntelliJ
+IDEA Community instead (the plugin uses only IntelliJ Platform + bundled-YAML
+APIs, so it loads in either):
 
 ```bash
-./gradlew :plugin:buildPlugin -PideType=CL -PideVersion=2024.3
+./gradlew :plugin:buildPlugin -PideType=IC -PideVersion=2026.1.1
 ```
 
-This also requires bumping the toolchain (CLion + plugin 2.5.0 hits the
-"No IntelliJ Platform dependency found" resolution bug,
-[intellij-platform-gradle-plugin#1931](https://github.com/JetBrains/intellij-platform-gradle-plugin/issues/1931)):
-
-1. IntelliJ Platform Gradle Plugin **>= 2.6** (in `plugin/build.gradle.kts`).
-2. **Gradle 9.x** (`./gradlew wrapper --gradle-version 9.x`) and **Kotlin >= 2.1**
-   (root `build.gradle.kts`).
-3. **JDK 21** for CLion 2024.2+ (CLion 2024.1 still builds on JDK 17).
+Produced artifact: `plugin/build/distributions/esphome-clion-plugin-<version>.zip`
+(`since-build=242`, i.e. installable in any 2024.2+ IDE through CLion 2026.1.x).
 
 ## Catalog data & licensing
 

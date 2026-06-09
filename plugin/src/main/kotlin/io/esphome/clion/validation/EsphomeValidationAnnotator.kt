@@ -124,8 +124,14 @@ class EsphomeValidationAnnotator : ExternalAnnotator<EsphomeValidationAnnotator.
      * inside a read action where `invokeAndWait` would deadlock.
      */
     private fun flushUnsavedChanges(file: VirtualFile) {
+        val application = ApplicationManager.getApplication()
+        // Saving needs the EDT/write lock, which can't be acquired from within a
+        // read action. The real [doAnnotate] phase holds no read lock, so this
+        // runs; a context that does (e.g. the test harness running passes under a
+        // read action) is skipped rather than tripping the deadlock guard.
+        if (application.isReadAccessAllowed) return
         val fileDocumentManager = FileDocumentManager.getInstance()
-        ApplicationManager.getApplication().invokeAndWait {
+        application.invokeAndWait {
             fileDocumentManager.getDocument(file)
                 ?.takeIf(fileDocumentManager::isDocumentUnsaved)
                 ?.let(fileDocumentManager::saveDocument)
