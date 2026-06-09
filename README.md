@@ -69,6 +69,21 @@ APIs, so it loads in either):
 Produced artifact: `plugin/build/distributions/esphome-clion-plugin-<version>.zip`
 (`since-build=242`, i.e. installable in any 2024.2+ IDE through CLion 2026.1.x).
 
+## Releasing
+
+Releases are built by GitHub Actions (`.github/workflows/release.yml`). Push a
+semver tag and the workflow runs the tests, builds the distribution, and
+publishes a GitHub release with the zip attached:
+
+```bash
+git tag v0.6.1 && git push origin v0.6.1
+```
+
+The plugin version is taken from the tag (the leading `v` is stripped), so no
+manual version edit is needed. A tag with a pre-release suffix (e.g.
+`v0.7.0-rc1`) is published as a GitHub pre-release. Every push and pull request
+to `main` also runs the test suites via `.github/workflows/ci.yml`.
+
 ## Catalog data & licensing
 
 `plugin/src/main/resources/esphome/definitions/` (committed subset) and the
