@@ -27,6 +27,9 @@ class EsphomeIdUsageTargetProvider : UsageTargetProvider {
             false,
         ) ?: return null
         if (EsphomeIdReferences.declaredIdName(scalar) == null) return null
-        return arrayOf(PsiElement2UsageTargetAdapter(scalar))
+        // (scalar, true) — the single-arg PsiElement2UsageTargetAdapter(PsiElement)
+        // is scheduled for removal; the (element, requiresPsiElement=true) overload
+        // is the supported replacement and behaves identically here.
+        return arrayOf(PsiElement2UsageTargetAdapter(scalar, true))
     }
 }
