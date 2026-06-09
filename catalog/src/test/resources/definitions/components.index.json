@@ -32,6 +32,14 @@
       "category": "sensor",
       "docs_url": "https://esphome.io/components/sensor/dht",
       "dependencies": []
+    },
+    {
+      "id": "lvgl",
+      "name": "LVGL",
+      "category": "misc",
+      "docs_url": "https://esphome.io/components/lvgl/",
+      "dependencies": ["display"],
+      "multi_conf": true
     }
   ]
 }
