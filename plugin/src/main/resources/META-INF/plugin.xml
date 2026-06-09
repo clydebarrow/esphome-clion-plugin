@@ -1,5 +1,8 @@
 <idea-plugin>
-    <id>io.esphome.clion</id>
+    <!-- Plugin ID must not contain a JetBrains product name (e.g. "clion"),
+         per Marketplace rules; the io.esphome.clion.* Kotlin packages are
+         unaffected. The ID is permanent once published. -->
+    <id>io.esphome.plugin</id>
     <name>ESPHome</name>
     <vendor email="clyde@stubbs.me" url="https://esphome.io">Clyde Stubbs</vendor>
 
