@@ -69,10 +69,22 @@ private object EsphomeCompletionProvider : CompletionProvider<CompletionParamete
         val position = parameters.position
         // Inside a `${...}` → substitution names (works in fragments too, so this
         // runs before the esphome-file gate).
-        if (addSubstitutionCompletions(parameters, position, result)) return
+        if (addSubstitutionCompletions(parameters, position, result)) {
+            result.stopHere()
+            return
+        }
 
         val file = position.containingFile as? YAMLFile ?: return
-        if (!EsphomeYaml.isEsphomeFile(file)) return
+        // Recognise configs whose `esphome:` comes from a package (top-level
+        // `packages:`, no own `esphome:`) and fragments included by one — not
+        // just files with a literal top-level `esphome:` key.
+        if (!EsphomeIncludeGraph.getInstance(file.project).isEsphomeConfigContext(file)) return
+
+        // We drive completion structurally from the catalog, so suppress the
+        // bundled YAML plugin's word-completion fallback — otherwise it pads the
+        // list with in-use ids, sibling keys, and other words scraped from the
+        // file that are irrelevant to the current key/value position.
+        result.stopHere()
 
         val repo = EsphomeCatalogService.getInstance().repository
         val keyValue = position.parentOfType<YAMLKeyValue>()
@@ -146,6 +158,18 @@ private object EsphomeCompletionProvider : CompletionProvider<CompletionParamete
             present = presentKeys(container)
         }
 
+        // Inside an automation list — a sequence under a trigger (`on_*`) or a
+        // `then:`/`else:` — the keys are action names (`lvgl.widget.update`,
+        // `switch.turn_on`). Actions are global, so offer them all.
+        path.lastOrNull()?.let { listKey ->
+            if (listKey.startsWith("on_") || listKey == "then" || listKey == "else") {
+                repo.actions.asSequence()
+                    .filter { it.id !in present }
+                    .forEach { result.addElement(keyLookup(it.id, it.name.ifBlank { null })) }
+                return
+            }
+        }
+
         if (path.isEmpty()) {
             repo.topLevelKeys.asSequence()
                 .filter { it !in present }
@@ -166,10 +190,21 @@ private object EsphomeCompletionProvider : CompletionProvider<CompletionParamete
             return
         }
 
-        val component = resolved.component ?: return
-        component.childEntriesAt(resolved.nestedPath).asSequence()
-            .filter { !it.isDecoration && it.key !in present }
-            .forEach { result.addElement(entryLookup(it)) }
+        // Component field keys (when a body exists — some components are
+        // schema-less in the catalog, but may still carry triggers below).
+        resolved.component?.childEntriesAt(resolved.nestedPath)?.asSequence()
+            ?.filter { !it.isDecoration && it.key !in present }
+            ?.forEach { result.addElement(entryLookup(it)) }
+
+        // Triggers (on_*) live in the automations index, not config_entries, and
+        // belong at a component's root (a direct child of `i2c:` or a
+        // `- platform:` item). Offer them keyed on the domain/component id even
+        // when the component body is absent.
+        if (resolved.nestedPath.isEmpty()) {
+            repo.triggersFor(listOf(path.first())).asSequence()
+                .filter { it.key !in present }
+                .forEach { result.addElement(keyLookup(it.key, it.name.ifBlank { null })) }
+        }
     }
 
     // --- value completion --------------------------------------------------
@@ -196,6 +231,13 @@ private object EsphomeCompletionProvider : CompletionProvider<CompletionParamete
             .firstOrNull { it.key == keyValue.keyText } ?: return
         entry.options?.forEach { option ->
             result.addElement(LookupElementBuilder.create(option.value).withTypeText(option.label))
+        }
+
+        // Boolean fields carry no `options`; offer the literals.
+        if (entry.type == ConfigEntryType.BOOLEAN) {
+            for (value in listOf("true", "false")) {
+                result.addElement(LookupElementBuilder.create(value).withTypeText("boolean"))
+            }
         }
 
         // An id-reference field → in-scope ids whose component type matches.

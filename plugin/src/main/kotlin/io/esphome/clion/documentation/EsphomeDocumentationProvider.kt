@@ -7,8 +7,8 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.util.parentOfType
 import io.esphome.clion.psi.EsphomeResolution
 import io.esphome.clion.psi.EsphomeTarget
-import io.esphome.clion.psi.EsphomeYaml
 import io.esphome.clion.services.EsphomeCatalogService
+import io.esphome.clion.services.EsphomeIncludeGraph
 import org.jetbrains.yaml.psi.YAMLFile
 import org.jetbrains.yaml.psi.YAMLKeyValue
 
@@ -24,7 +24,11 @@ class EsphomeDocumentationProvider : AbstractDocumentationProvider() {
         contextElement: PsiElement?,
         targetOffset: Int,
     ): PsiElement? {
-        if (file !is YAMLFile || contextElement == null || !EsphomeYaml.isEsphomeFile(file)) return null
+        if (file !is YAMLFile || contextElement == null ||
+            !EsphomeIncludeGraph.getInstance(file.project).isEsphomeConfigContext(file)
+        ) {
+            return null
+        }
         // Anchor docs on the enclosing key/value; resolution decides if it maps.
         return contextElement.parentOfType<YAMLKeyValue>(withSelf = true)
     }
@@ -45,7 +49,7 @@ class EsphomeDocumentationProvider : AbstractDocumentationProvider() {
     private fun resolve(element: PsiElement?): EsphomeTarget? {
         val keyValue = element as? YAMLKeyValue ?: return null
         val file = keyValue.containingFile as? YAMLFile ?: return null
-        if (!EsphomeYaml.isEsphomeFile(file)) return null
+        if (!EsphomeIncludeGraph.getInstance(file.project).isEsphomeConfigContext(file)) return null
         val repo = EsphomeCatalogService.getInstance().repository
         return EsphomeResolution.resolveKey(repo, keyValue)
     }

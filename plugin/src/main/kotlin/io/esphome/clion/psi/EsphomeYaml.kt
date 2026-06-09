@@ -28,9 +28,6 @@ object EsphomeYaml {
     /** The discriminator key inside a platform list item (`- platform: dht`). */
     const val PLATFORM_KEY = "platform"
 
-    /** True if [file] has a top-level `esphome:` key in any of its documents. */
-    fun isEsphomeFile(file: YAMLFile): Boolean = hasTopLevelKey(file, MARKER_KEY)
-
     /**
      * True if [file] is a config ESPHome can compile standalone — it has a
      * top-level `esphome:`, or a top-level `packages:` (which commonly supplies

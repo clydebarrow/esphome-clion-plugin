@@ -1,0 +1,10 @@
+{
+  "esphome_schema_version": "2026.5.3",
+  "triggers": [
+    {"id": "ektf2232.touchscreen.on_touch", "name": "Touchscreen → On Touch", "applies_to": ["touchscreen"]},
+    {"id": "gt911.touchscreen.on_touch", "name": "Touchscreen → On Touch", "applies_to": ["touchscreen"]},
+    {"id": "ektf2232.touchscreen.on_release", "name": "Touchscreen → On Release", "applies_to": ["touchscreen"]},
+    {"id": "sensor.on_value", "name": "Sensor → On Value", "applies_to": ["sensor"]},
+    {"id": "on_boot", "name": "On Boot", "applies_to": [], "is_device_level": true}
+  ]
+}

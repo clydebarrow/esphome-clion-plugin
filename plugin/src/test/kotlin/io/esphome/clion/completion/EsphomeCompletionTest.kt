@@ -48,8 +48,69 @@ class EsphomeCompletionTest : BasePlatformTestCase() {
         assertContainsElements(items, "RESTORE_DEFAULT_OFF")
     }
 
+    fun `test boolean field values are suggested`() {
+        val items = complete("esphome:\n  name: x\ni2c:\n  scan: <caret>\n")
+        assertContainsElements(items, "true", "false")
+    }
+
+    /**
+     * Triggers (`on_*`) come from the automations index, not a component's
+     * config_entries, and are offered at the component's root — here a
+     * `touchscreen` platform item — keyed on the domain.
+     */
+    fun `test triggers are suggested at a component root`() {
+        val items = complete("esphome:\n  name: x\ntouchscreen:\n  - platform: gt911\n    <caret>\n")
+        assertContainsElements(items, "on_touch", "on_release", "on_update")
+    }
+
+    /**
+     * The `lvgl:` root is the active-screen obj, so its obj-level event triggers
+     * are valid there. They come from the (overlaid) automations index.
+     */
+    fun `test lvgl root triggers are suggested`() {
+        val items = complete("esphome:\n  name: x\nlvgl:\n  <caret>\n")
+        assertContainsElements(items, "on_boot", "on_all_events")
+    }
+
+    /** In an automation list (under a trigger `on_*`), keys are action names. */
+    fun `test actions are suggested in an automation list`() {
+        val items = complete(
+            "esphome:\n  name: x\nbinary_sensor:\n  - platform: gpio\n    pin: 1\n    on_press:\n      - <caret>\n",
+        )
+        if (!items.containsAll(listOf("delay", "logger.log"))) error("got: $items")
+        assertContainsElements(items, "delay", "logger.log", "switch.turn_on")
+    }
+
     fun `test non-esphome yaml is ignored`() {
         val items = complete("foo:\n  bar: 1\n<caret>\n")
         assertDoesntContain(items, "wifi", "sensor")
+    }
+
+    /**
+     * The bundled YAML plugin's word-completion fallback otherwise pads the list
+     * with words scraped from the file — in-use ids, sibling keys, values — that
+     * are irrelevant to the current key position. Completion is driven from the
+     * catalog, so those must not appear alongside the real i2c keys.
+     */
+    /**
+     * A config whose `esphome:` block comes from a package has a top-level
+     * `packages:` key but no `esphome:` of its own. It must still be recognised
+     * as an ESPHome file so completion works — otherwise only the bundled YAML
+     * word-completion runs (the reported "no suggestions" / wrong list).
+     */
+    fun `test packages-based config without top-level esphome is recognized`() {
+        val items = complete(
+            "substitutions:\n  name: x\npackages:\n  base: !include base.yaml\ni2c:\n  scl: 14\n  <caret>\n",
+        )
+        assertContainsElements(items, "scan", "frequency", "sda")
+    }
+
+    fun `test bundled yaml word-completion noise is suppressed`() {
+        val items = complete(
+            "esphome:\n  name: x\nwifi:\n  ssid: foo\ni2c:\n  id: bus_a\n  scl: 14\n  s<caret>\n",
+        )
+        assertContainsElements(items, "scan", "sda")
+        // bus_a (an in-use id), ssid (a sibling key), esphome (an in-use key).
+        assertDoesntContain(items, "bus_a", "ssid", "esphome")
     }
 }
