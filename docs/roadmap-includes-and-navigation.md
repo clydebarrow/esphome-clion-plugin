@@ -143,11 +143,26 @@ Tests: `EsphomeValidationTargetTest` + a parser case.
 - `CatalogRepository.referenceableClasses` = top-level keys ∪ all `provides`.
 - Tests: `EsphomeIdInspectionTest`.
 
-## Status: complete
+### Phase 6 — substitutions (done)
+`${name}` / `$name` resolution over the include graph:
+- `services.EsphomeSubstitutions` — `definitionsInScope`, `resolve`,
+  `valueOf` (recursive expansion), `knownNamesInScope` (incl. `!include … vars:`).
+- `references.EsphomeSubstitutionReferenceContributor` → soft references from
+  each usage to its `substitutions:` definition (navigation); `…Syntax` is the
+  shared `${name}`/`$name` scanner.
+- Completion of substitution names inside `${…}` (in the completion contributor).
+- `inspections.EsphomeUnresolvedSubstitutionInspection` (enabled): flags an
+  undefined braced `${name}` with near-match quick-fixes; conservative —
+  braced-only, include `vars:` count as defined, silent when nothing is defined
+  (config may use command-line `-s`).
+- Tests: `EsphomeSubstitutionTest`, `EsphomeSubstitutionInspectionTest`,
+  `EsphomeSubstitutionCompletionTest`.
 
-All five phases are implemented and tested. Possible future work: id completion
-inside schema-less components (lvgl) via the name-based heuristic; substitution
-resolution; remote (`github://`) package fetching.
+## Status: phases 1–6 complete
+
+Possible future work: substitution **value** resolution feeding the id index (so
+`id: ${x}_y` indexes/validates); find-usages/rename of substitution variables;
+id completion inside schema-less components (lvgl); remote (`github://`) packages.
 
 ## Known hard parts / risks
 

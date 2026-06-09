@@ -35,6 +35,10 @@
             language="yaml"
             implementation="io.esphome.clion.references.EsphomeIdReferenceContributor"/>
 
+        <psi.referenceContributor
+            language="yaml"
+            implementation="io.esphome.clion.references.EsphomeSubstitutionReferenceContributor"/>
+
         <fileBasedIndex implementation="io.esphome.clion.index.EsphomeIncludeIndex"/>
         <fileBasedIndex implementation="io.esphome.clion.index.EsphomeIdIndex"/>
 
@@ -74,5 +78,14 @@
             enabledByDefault="false"
             level="WEAK WARNING"
             implementationClass="io.esphome.clion.inspections.EsphomeUnusedIdInspection"/>
+
+        <localInspection
+            language="yaml"
+            shortName="EsphomeUnresolvedSubstitution"
+            displayName="Unresolved ESPHome substitution"
+            groupName="ESPHome"
+            enabledByDefault="true"
+            level="WARNING"
+            implementationClass="io.esphome.clion.inspections.EsphomeUnresolvedSubstitutionInspection"/>
     </extensions>
 </idea-plugin>

@@ -22,6 +22,9 @@ object EsphomeYaml {
     /** Top-level key that pulls in other configs; can itself supply `esphome:`. */
     const val PACKAGES_KEY = "packages"
 
+    /** Top-level key defining `${name}` text substitutions. */
+    const val SUBSTITUTIONS_KEY = "substitutions"
+
     /** The discriminator key inside a platform list item (`- platform: dht`). */
     const val PLATFORM_KEY = "platform"
 

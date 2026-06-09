@@ -21,10 +21,12 @@ import io.esphome.clion.references.EsphomeIdReferences
 import io.esphome.clion.services.EsphomeCatalogService
 import io.esphome.clion.services.EsphomeIds
 import io.esphome.clion.services.EsphomeIncludeGraph
+import io.esphome.clion.services.EsphomeSubstitutions
 import org.jetbrains.yaml.YAMLLanguage
 import org.jetbrains.yaml.psi.YAMLFile
 import org.jetbrains.yaml.psi.YAMLKeyValue
 import org.jetbrains.yaml.psi.YAMLMapping
+import org.jetbrains.yaml.psi.YAMLScalar
 
 /**
  * Completion for ESPHome YAML, driven by the vendored component catalog.
@@ -65,6 +67,10 @@ private object EsphomeCompletionProvider : CompletionProvider<CompletionParamete
         result: CompletionResultSet,
     ) {
         val position = parameters.position
+        // Inside a `${...}` → substitution names (works in fragments too, so this
+        // runs before the esphome-file gate).
+        if (addSubstitutionCompletions(parameters, position, result)) return
+
         val file = position.containingFile as? YAMLFile ?: return
         if (!EsphomeYaml.isEsphomeFile(file)) return
 
@@ -80,6 +86,39 @@ private object EsphomeCompletionProvider : CompletionProvider<CompletionParamete
         } else {
             addKeyCompletions(repo, position, keyValue, nascentChildOf = inValueSubtree, result = result)
         }
+    }
+
+    // --- substitution completion -------------------------------------------
+
+    /**
+     * When the caret sits inside an unclosed `${…` token, offer the substitution
+     * names in scope (with their values as type text). Returns true when the
+     * caret is in that context, so normal key/value completion is skipped.
+     */
+    private fun addSubstitutionCompletions(
+        parameters: CompletionParameters,
+        position: PsiElement,
+        result: CompletionResultSet,
+    ): Boolean {
+        val scalar = position.parentOfType<YAMLScalar>() ?: return false
+        val textToCaret = scalar.text.substring(
+            0,
+            (parameters.offset - scalar.textRange.startOffset).coerceIn(0, scalar.text.length),
+        )
+        val open = textToCaret.lastIndexOf("\${")
+        if (open < 0 || textToCaret.indexOf('}', open) >= 0) return false
+        val partial = textToCaret.substring(open + 2).trimStart()
+        if (!partial.matches(IDENTIFIER_PREFIX)) return false
+
+        val virtualFile = position.containingFile.originalFile.virtualFile ?: return true
+        val definitions = EsphomeSubstitutions.getInstance(position.project).definitionsInScope(virtualFile)
+        val prefixed = result.withPrefixMatcher(partial)
+        for ((name, definition) in definitions) {
+            var element = LookupElementBuilder.create(name)
+            (definition.keyValue.value as? YAMLScalar)?.textValue?.let { element = element.withTypeText(it) }
+            prefixed.addElement(element)
+        }
+        return true
     }
 
     // --- key completion ----------------------------------------------------
@@ -221,4 +260,6 @@ private object EsphomeCompletionProvider : CompletionProvider<CompletionParamete
 
     private fun String.singleLine(): String =
         replace('\n', ' ').let { if (it.length > 80) it.take(77) + "…" else it }
+
+    private val IDENTIFIER_PREFIX = Regex("[A-Za-z0-9_]*")
 }
