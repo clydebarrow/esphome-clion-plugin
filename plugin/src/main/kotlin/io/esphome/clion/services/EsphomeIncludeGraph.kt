@@ -9,6 +9,7 @@ import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.util.indexing.FileBasedIndex
 import io.esphome.clion.index.EsphomeIncludeIndex
+import io.esphome.clion.psi.EsphomeYaml
 import io.esphome.clion.references.EsphomeInclude
 import org.jetbrains.yaml.psi.YAMLFile
 import org.jetbrains.yaml.psi.YAMLScalar
@@ -82,6 +83,24 @@ class EsphomeIncludeGraph(private val project: Project) {
         }
         all.add(file)
         return all
+    }
+
+    /**
+     * True if [file] is an ESPHome config we should offer editor features
+     * (completion, documentation) for: a standalone config itself — top-level
+     * `esphome:` *or* `packages:` (a package commonly supplies the `esphome:`
+     * block, so the main file has none of its own) — or a fragment included,
+     * directly or transitively, by such a config. The standalone check is cheap
+     * and short-circuits, so only included fragments pay for the reverse walk.
+     */
+    fun isEsphomeConfigContext(file: YAMLFile): Boolean {
+        if (EsphomeYaml.isStandaloneConfig(file)) return true
+        val vfile = file.originalFile.virtualFile ?: return false
+        val psiManager = PsiManager.getInstance(project)
+        return rootsOf(vfile).any { root ->
+            root != vfile &&
+                (psiManager.findFile(root) as? YAMLFile)?.let(EsphomeYaml::isStandaloneConfig) == true
+        }
     }
 
     companion object {

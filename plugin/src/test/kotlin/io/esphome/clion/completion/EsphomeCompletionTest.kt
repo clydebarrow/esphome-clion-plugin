@@ -59,6 +59,19 @@ class EsphomeCompletionTest : BasePlatformTestCase() {
      * are irrelevant to the current key position. Completion is driven from the
      * catalog, so those must not appear alongside the real i2c keys.
      */
+    /**
+     * A config whose `esphome:` block comes from a package has a top-level
+     * `packages:` key but no `esphome:` of its own. It must still be recognised
+     * as an ESPHome file so completion works — otherwise only the bundled YAML
+     * word-completion runs (the reported "no suggestions" / wrong list).
+     */
+    fun `test packages-based config without top-level esphome is recognized`() {
+        val items = complete(
+            "substitutions:\n  name: x\npackages:\n  base: !include base.yaml\ni2c:\n  scl: 14\n  <caret>\n",
+        )
+        assertContainsElements(items, "scan", "frequency", "sda")
+    }
+
     fun `test bundled yaml word-completion noise is suppressed`() {
         val items = complete(
             "esphome:\n  name: x\nwifi:\n  ssid: foo\ni2c:\n  id: bus_a\n  scl: 14\n  s<caret>\n",

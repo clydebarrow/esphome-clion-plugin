@@ -75,7 +75,10 @@ private object EsphomeCompletionProvider : CompletionProvider<CompletionParamete
         }
 
         val file = position.containingFile as? YAMLFile ?: return
-        if (!EsphomeYaml.isEsphomeFile(file)) return
+        // Recognise configs whose `esphome:` comes from a package (top-level
+        // `packages:`, no own `esphome:`) and fragments included by one — not
+        // just files with a literal top-level `esphome:` key.
+        if (!EsphomeIncludeGraph.getInstance(file.project).isEsphomeConfigContext(file)) return
 
         // We drive completion structurally from the catalog, so suppress the
         // bundled YAML plugin's word-completion fallback — otherwise it pads the
