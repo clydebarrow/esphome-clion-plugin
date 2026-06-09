@@ -136,6 +136,31 @@ data class ComponentCatalogIndex(
     val components: List<ComponentCatalogIndexEntry> = emptyList(),
 )
 
+/** A trigger (`on_*`) from `automations.index.json`. */
+@Serializable
+data class TriggerEntry(
+    val id: String,
+    val name: String = "",
+    val description: String = "",
+    @SerialName("docs_url") val docsUrl: String = "",
+    @SerialName("applies_to") val appliesTo: List<String> = emptyList(),
+    @SerialName("is_device_level") val isDeviceLevel: Boolean = false,
+    @SerialName("supports_list") val supportsList: Boolean = false,
+) {
+    /** The key as written in YAML — the last id segment (`x.touchscreen.on_touch` → `on_touch`). */
+    val key: String get() = id.substringAfterLast('.')
+}
+
+/**
+ * Top-level shape of `automations.index.json`. We model only [triggers] (offered
+ * as `on_*` keys); actions/conditions/filters are parsed-over.
+ */
+@Serializable
+data class AutomationsIndex(
+    @SerialName("esphome_schema_version") val esphomeSchemaVersion: String = "",
+    val triggers: List<TriggerEntry> = emptyList(),
+)
+
 /** Full per-component body from `components/<id>.json` (index fields + tree). */
 @Serializable
 data class ComponentCatalogEntry(

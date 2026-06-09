@@ -105,6 +105,9 @@ val vendorCatalog by tasks.registering {
             from(tarTree(resources.gzip(tarball)))
             include("**/esphome_device_builder/definitions/components.index.json")
             include("**/esphome_device_builder/definitions/components/*.json")
+            // The automations index lists triggers (on_*), keyed by the
+            // component they apply to — completion offers them as keys.
+            include("**/esphome_device_builder/definitions/automations.index.json")
             includeEmptyDirs = false
             eachFile {
                 val marker = path.indexOf("definitions/")

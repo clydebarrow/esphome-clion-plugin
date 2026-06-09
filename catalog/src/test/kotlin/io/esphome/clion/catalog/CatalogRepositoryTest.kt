@@ -87,6 +87,21 @@ class CatalogRepositoryTest {
         assertEquals(fileRepo.schemaVersion, proxied.schemaVersion)
     }
 
+    /**
+     * Triggers come from `automations.index.json`, grouped by `applies_to`
+     * (a domain/component id) and deduped by key — the same `on_touch` is
+     * registered once per touchscreen platform. Device-level triggers
+     * (`applies_to: []`, `is_device_level`) surface under `esphome`.
+     */
+    @Test
+    fun `triggers are grouped by applies_to, deduped, and device-level mapped to esphome`() {
+        val repo = repo()
+        assertEquals(listOf("on_touch", "on_release"), repo.triggersFor(listOf("touchscreen")).map { it.key })
+        assertEquals(listOf("on_value"), repo.triggersFor(listOf("sensor")).map { it.key })
+        assertEquals(listOf("on_boot"), repo.triggersFor(listOf("esphome")).map { it.key })
+        assertTrue(repo.triggersFor(listOf("i2c")).isEmpty())
+    }
+
     private fun definitionsDir(): Path =
         Path.of(checkNotNull(javaClass.classLoader.getResource("definitions")).toURI())
 }

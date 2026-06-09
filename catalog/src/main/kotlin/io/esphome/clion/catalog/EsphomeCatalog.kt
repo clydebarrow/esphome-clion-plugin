@@ -33,6 +33,8 @@ object EsphomeCatalog {
     fun parseIndex(text: String): ComponentCatalogIndex = json.decodeFromString(text)
 
     fun parseComponent(text: String): ComponentCatalogEntry = json.decodeFromString(text)
+
+    fun parseAutomations(text: String): AutomationsIndex = json.decodeFromString(text)
 }
 
 /**
@@ -143,8 +145,42 @@ class CatalogRepository(private val source: CatalogSource) {
         (nonPlatform.asSequence() + domains.asSequence()).toSortedSet()
     }
 
+    /** Triggers (`on_*`), or empty when no automations index is present. */
+    private val automations: AutomationsIndex by lazy {
+        source.read(AUTOMATIONS_INDEX_FILE)?.let(EsphomeCatalog::parseAutomations) ?: AutomationsIndex()
+    }
+
+    /**
+     * Triggers grouped by the context they apply to — a platform domain or
+     * component id (`touchscreen`, `sensor`, `remote_receiver`), or `esphome`
+     * for device-level triggers (`on_boot`). Deduped by trigger key, since the
+     * same `on_touch` is registered once per platform.
+     */
+    private val triggersByContext: Map<String, List<TriggerEntry>> by lazy {
+        val byContext = HashMap<String, LinkedHashMap<String, TriggerEntry>>()
+        for (trigger in automations.triggers) {
+            val contexts = trigger.appliesTo.ifEmpty {
+                if (trigger.isDeviceLevel) listOf(DEVICE_LEVEL_CONTEXT) else emptyList()
+            }
+            for (context in contexts) {
+                byContext.getOrPut(context) { LinkedHashMap() }.putIfAbsent(trigger.key, trigger)
+            }
+        }
+        byContext.mapValues { (_, triggers) -> triggers.values.toList() }
+    }
+
+    /** Triggers offered at the root of any of [contextKeys] (a domain/component id). */
+    fun triggersFor(contextKeys: Collection<String>): List<TriggerEntry> =
+        contextKeys.asSequence()
+            .flatMap { (triggersByContext[it] ?: emptyList()).asSequence() }
+            .distinctBy { it.key }
+            .toList()
+
     companion object {
         const val INDEX_FILE = "components.index.json"
+        const val AUTOMATIONS_INDEX_FILE = "automations.index.json"
         const val BODIES_DIR = "components"
+        /** Top-level component under which device-level triggers (`on_boot`, …) live. */
+        private const val DEVICE_LEVEL_CONTEXT = "esphome"
     }
 }

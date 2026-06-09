@@ -178,10 +178,21 @@ private object EsphomeCompletionProvider : CompletionProvider<CompletionParamete
             return
         }
 
-        val component = resolved.component ?: return
-        component.childEntriesAt(resolved.nestedPath).asSequence()
-            .filter { !it.isDecoration && it.key !in present }
-            .forEach { result.addElement(entryLookup(it)) }
+        // Component field keys (when a body exists — some components are
+        // schema-less in the catalog, but may still carry triggers below).
+        resolved.component?.childEntriesAt(resolved.nestedPath)?.asSequence()
+            ?.filter { !it.isDecoration && it.key !in present }
+            ?.forEach { result.addElement(entryLookup(it)) }
+
+        // Triggers (on_*) live in the automations index, not config_entries, and
+        // belong at a component's root (a direct child of `i2c:` or a
+        // `- platform:` item). Offer them keyed on the domain/component id even
+        // when the component body is absent.
+        if (resolved.nestedPath.isEmpty()) {
+            repo.triggersFor(listOf(path.first())).asSequence()
+                .filter { it.key !in present }
+                .forEach { result.addElement(keyLookup(it.key, it.name.ifBlank { null })) }
+        }
     }
 
     // --- value completion --------------------------------------------------

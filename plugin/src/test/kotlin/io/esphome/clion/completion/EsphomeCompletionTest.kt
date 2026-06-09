@@ -53,6 +53,16 @@ class EsphomeCompletionTest : BasePlatformTestCase() {
         assertContainsElements(items, "true", "false")
     }
 
+    /**
+     * Triggers (`on_*`) come from the automations index, not a component's
+     * config_entries, and are offered at the component's root — here a
+     * `touchscreen` platform item — keyed on the domain.
+     */
+    fun `test triggers are suggested at a component root`() {
+        val items = complete("esphome:\n  name: x\ntouchscreen:\n  - platform: gt911\n    <caret>\n")
+        assertContainsElements(items, "on_touch", "on_release", "on_update")
+    }
+
     fun `test non-esphome yaml is ignored`() {
         val items = complete("foo:\n  bar: 1\n<caret>\n")
         assertDoesntContain(items, "wifi", "sensor")
