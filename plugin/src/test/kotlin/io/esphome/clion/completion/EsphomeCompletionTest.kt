@@ -48,6 +48,11 @@ class EsphomeCompletionTest : BasePlatformTestCase() {
         assertContainsElements(items, "RESTORE_DEFAULT_OFF")
     }
 
+    fun `test boolean field values are suggested`() {
+        val items = complete("esphome:\n  name: x\ni2c:\n  scan: <caret>\n")
+        assertContainsElements(items, "true", "false")
+    }
+
     fun `test non-esphome yaml is ignored`() {
         val items = complete("foo:\n  bar: 1\n<caret>\n")
         assertDoesntContain(items, "wifi", "sensor")

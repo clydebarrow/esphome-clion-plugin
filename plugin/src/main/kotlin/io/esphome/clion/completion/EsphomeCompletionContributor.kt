@@ -210,6 +210,13 @@ private object EsphomeCompletionProvider : CompletionProvider<CompletionParamete
             result.addElement(LookupElementBuilder.create(option.value).withTypeText(option.label))
         }
 
+        // Boolean fields carry no `options`; offer the literals.
+        if (entry.type == ConfigEntryType.BOOLEAN) {
+            for (value in listOf("true", "false")) {
+                result.addElement(LookupElementBuilder.create(value).withTypeText("boolean"))
+            }
+        }
+
         // An id-reference field → in-scope ids whose component type matches.
         if (entry.type == ConfigEntryType.ID) {
             entry.referencesComponent?.let { addIdReferenceCompletions(repo, position, it, result) }
