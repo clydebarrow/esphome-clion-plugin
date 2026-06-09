@@ -1,0 +1,100 @@
+# Builds the plugin distribution and publishes a GitHub release.
+#
+# Trigger by pushing a semver tag, e.g.:
+#   git tag v0.6.1 && git push origin v0.6.1
+# The pluginVersion (patched into plugin.xml and the zip name) is derived from
+# the tag with the leading `v` stripped. A tag with a pre-release suffix
+# (e.g. v0.7.0-rc1) is published as a GitHub pre-release.
+#
+# Can also be run manually from the Actions tab (workflow_dispatch) with an
+# explicit version; that build is uploaded as an artifact but not released.
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Plugin version for a manual build (no release is published)"
+        required: true
+        default: "0.0.0-dev"
+
+permissions:
+  contents: write # create the GitHub release and upload the asset
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      # Tag v1.2.3 -> 1.2.3 ; manual run -> the dispatch input. Untrusted input
+      # (the tag name and the dispatch field) is read from env, never spliced
+      # into the script via ${{ }}, so it can't break out of the assignment.
+      - name: Resolve version
+        id: version
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            VERSION="$INPUT_VERSION"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          # Reject anything that isn't a SemVer-ish string. [[ =~ ]] anchors
+          # against the whole value, so an embedded newline fails the match —
+          # this blocks newline-injection into $GITHUB_OUTPUT and stops a stray
+          # tag/input from producing an invalid release.
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]]; then
+            echo "Invalid version '$VERSION'; expected SemVer like 1.2.3 or 1.2.3-rc1." >&2
+            exit 1
+          fi
+          # Pre-release if the version carries a suffix like -rc1 / -beta.
+          if [[ "$VERSION" == *-* ]]; then PRERELEASE=true; else PRERELEASE=false; fi
+          printf 'version=%s\n' "$VERSION" >> "$GITHUB_OUTPUT"
+          printf 'prerelease=%s\n' "$PRERELEASE" >> "$GITHUB_OUTPUT"
+
+      # Gate the release on the tests, then assemble the distributable. The
+      # build downloads the full ESPHome catalog (vendorCatalog) and the IDE SDK.
+      - name: Test and build plugin
+        run: >-
+          ./gradlew :catalog:test :plugin:test :plugin:buildPlugin
+          -PpluginVersion=${{ steps.version.outputs.version }}
+          --stacktrace
+
+      - name: Locate distribution
+        id: dist
+        run: |
+          ZIP="plugin/build/distributions/esphome-clion-plugin-${{ steps.version.outputs.version }}.zip"
+          test -f "$ZIP" || { echo "Expected $ZIP not found"; ls -l plugin/build/distributions; exit 1; }
+          echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
+
+      # Manual runs: keep the build as an artifact, don't publish a release.
+      - name: Upload build artifact
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v5
+        with:
+          name: esphome-clion-plugin-${{ steps.version.outputs.version }}
+          path: ${{ steps.dist.outputs.zip }}
+
+      # Tag pushes: publish the release with the zip attached.
+      - name: Publish GitHub release
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.dist.outputs.zip }}
+          prerelease: ${{ steps.version.outputs.prerelease }}
+          generate_release_notes: true

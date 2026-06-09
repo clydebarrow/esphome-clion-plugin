@@ -1,0 +1,35 @@
+# Runs the test suites on every push and pull request to main.
+# The release workflow (release.yml) builds the distributable on tags.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel an in-progress run when a newer commit is pushed to the same ref.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # JDK 21 satisfies the build's toolchain request directly, so the foojay
+      # resolver never has to download one.
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      # :catalog is pure-Kotlin/Maven Central; :plugin pulls the IntelliJ SDK.
+      - name: Run tests
+        run: ./gradlew :catalog:test :plugin:test --stacktrace
