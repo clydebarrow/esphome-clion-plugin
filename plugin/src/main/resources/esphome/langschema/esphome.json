@@ -1,0 +1,1505 @@
+{
+  "core": {
+    "action": {
+      "delay": {
+        "schema": {
+          "extends": [
+            "core.positive_time_period_milliseconds"
+          ]
+        },
+        "templatable": true,
+        "type": "schema"
+      },
+      "if": {
+        "schema": {
+          "config_vars": {
+            "all": {
+              "key": "Optional",
+              "registry": "condition",
+              "type": "registry"
+            },
+            "any": {
+              "key": "Optional"
+            },
+            "condition": {
+              "key": "Optional",
+              "registry": "condition",
+              "type": "registry"
+            },
+            "else": {
+              "is_list": true,
+              "key": "Optional",
+              "registry": "action",
+              "type": "registry"
+            },
+            "then": {
+              "is_list": true,
+              "key": "Optional",
+              "registry": "action",
+              "type": "registry"
+            }
+          }
+        },
+        "type": "schema"
+      },
+      "lambda": {},
+      "repeat": {
+        "schema": {
+          "config_vars": {
+            "count": {
+              "data_type": "positive_not_null_int",
+              "key": "Required",
+              "templatable": true,
+              "type": "integer"
+            },
+            "then": {
+              "is_list": true,
+              "key": "Required",
+              "registry": "action",
+              "type": "registry"
+            }
+          }
+        },
+        "type": "schema"
+      },
+      "wait_until": {
+        "maybe": "condition",
+        "schema": {
+          "config_vars": {
+            "condition": {
+              "key": "Required",
+              "registry": "condition",
+              "type": "registry"
+            },
+            "timeout": {
+              "key": "Optional",
+              "schema": {
+                "extends": [
+                  "core.positive_time_period_milliseconds"
+                ]
+              },
+              "templatable": true,
+              "type": "schema"
+            }
+          }
+        },
+        "type": "schema"
+      },
+      "while": {
+        "schema": {
+          "config_vars": {
+            "condition": {
+              "key": "Required",
+              "registry": "condition",
+              "type": "registry"
+            },
+            "then": {
+              "is_list": true,
+              "key": "Required",
+              "registry": "action",
+              "type": "registry"
+            }
+          }
+        },
+        "type": "schema"
+      }
+    },
+    "components": {
+      "adalight": {
+        "dependencies": [
+          "uart"
+        ]
+      },
+      "adc128s102": {
+        "dependencies": [
+          "spi"
+        ]
+      },
+      "ads1115": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "ads1118": {
+        "dependencies": [
+          "spi"
+        ]
+      },
+      "airthings_ble": {
+        "dependencies": [
+          "esp32_ble_tracker"
+        ]
+      },
+      "animation": {
+        "dependencies": [
+          "display"
+        ]
+      },
+      "apds9960": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "api": {
+        "dependencies": [
+          "network"
+        ]
+      },
+      "as3935_i2c": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "as3935_spi": {
+        "dependencies": [
+          "spi"
+        ]
+      },
+      "as5600": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "async_tcp": {
+        "dependencies": [
+          "network"
+        ]
+      },
+      "at581x": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "audio": {},
+      "audio_file": {},
+      "bedjet": {
+        "dependencies": [
+          "ble_client"
+        ]
+      },
+      "bk72xx": {},
+      "ble_client": {
+        "dependencies": [
+          "esp32_ble_tracker"
+        ]
+      },
+      "ble_nus": {},
+      "bluetooth_proxy": {
+        "dependencies": [
+          "api",
+          "esp32"
+        ]
+      },
+      "bme680_bsec": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "bme68x_bsec2_i2c": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "bp1658cj": {},
+      "bp5758d": {},
+      "bytebuffer": {},
+      "camera_encoder": {},
+      "cap1188": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "captive_portal": {
+        "dependencies": [
+          "wifi"
+        ]
+      },
+      "cc1101": {
+        "dependencies": [
+          "spi"
+        ]
+      },
+      "cd74hc4067": {},
+      "ch422g": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "ch423": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "color": {},
+      "dac7678": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "daly_bms": {
+        "dependencies": [
+          "uart"
+        ]
+      },
+      "dashboard_import": {
+        "dependencies": [
+          "api"
+        ]
+      },
+      "debug": {
+        "dependencies": [
+          "logger"
+        ]
+      },
+      "deep_sleep": {},
+      "demo": {},
+      "dfplayer": {
+        "dependencies": [
+          "uart"
+        ]
+      },
+      "dfrobot_sen0395": {
+        "dependencies": [
+          "uart"
+        ]
+      },
+      "dlms_meter": {
+        "dependencies": [
+          "uart"
+        ]
+      },
+      "dsmr": {
+        "dependencies": [
+          "uart"
+        ]
+      },
+      "e131": {
+        "dependencies": [
+          "network"
+        ]
+      },
+      "emc2101": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "emontx": {
+        "dependencies": [
+          "uart"
+        ]
+      },
+      "esp32": {},
+      "esp32_ble": {
+        "dependencies": [
+          "esp32"
+        ]
+      },
+      "esp32_ble_beacon": {
+        "dependencies": [
+          "esp32"
+        ]
+      },
+      "esp32_ble_server": {
+        "dependencies": [
+          "esp32"
+        ]
+      },
+      "esp32_ble_tracker": {
+        "dependencies": [
+          "esp32"
+        ]
+      },
+      "esp32_camera": {
+        "dependencies": [
+          "esp32"
+        ]
+      },
+      "esp32_camera_web_server": {
+        "dependencies": [
+          "network"
+        ]
+      },
+      "esp32_hosted": {},
+      "esp32_improv": {
+        "dependencies": [
+          "wifi",
+          "esp32"
+        ]
+      },
+      "esp32_touch": {
+        "dependencies": [
+          "esp32"
+        ]
+      },
+      "esp8266": {},
+      "esp_ldo": {},
+      "esphome": {},
+      "espnow": {},
+      "ethernet": {},
+      "exposure_notifications": {
+        "dependencies": [
+          "esp32_ble_tracker"
+        ]
+      },
+      "external_components": {},
+      "ezo_pmp": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "factory_reset": {},
+      "fingerprint_grow": {
+        "dependencies": [
+          "uart"
+        ]
+      },
+      "font": {},
+      "gdk101": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "globals": {},
+      "gp8403": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "gps": {
+        "dependencies": [
+          "uart"
+        ]
+      },
+      "graph": {
+        "dependencies": [
+          "display",
+          "sensor"
+        ]
+      },
+      "graphical_display_menu": {},
+      "grove_tb6612fng": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "hlk_fm22x": {
+        "dependencies": [
+          "uart"
+        ]
+      },
+      "hmac_md5": {},
+      "hmac_sha256": {},
+      "host": {},
+      "http_request": {
+        "dependencies": [
+          "network"
+        ]
+      },
+      "i2c": {},
+      "i2c_device": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "i2s_audio": {
+        "dependencies": [
+          "esp32"
+        ]
+      },
+      "image": {
+        "dependencies": [
+          "display"
+        ]
+      },
+      "improv_serial": {
+        "dependencies": [
+          "logger",
+          "wifi"
+        ]
+      },
+      "interval": {},
+      "json": {},
+      "key_collector": {},
+      "lcd_menu": {},
+      "ld2410": {
+        "dependencies": [
+          "uart"
+        ]
+      },
+      "ld2412": {
+        "dependencies": [
+          "uart"
+        ]
+      },
+      "ld2420": {
+        "dependencies": [
+          "uart"
+        ]
+      },
+      "ld2450": {
+        "dependencies": [
+          "uart"
+        ]
+      },
+      "libretiny": {},
+      "lightwaverf": {},
+      "ln882x": {},
+      "logger": {},
+      "lvgl": {
+        "dependencies": [
+          "display"
+        ]
+      },
+      "m5stack_8angle": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "mapping": {},
+      "matrix_keypad": {},
+      "max6956": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "mcp23008": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "mcp23016": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "mcp23017": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "mcp23s08": {
+        "dependencies": [
+          "spi"
+        ]
+      },
+      "mcp23s17": {
+        "dependencies": [
+          "spi"
+        ]
+      },
+      "mcp3008": {
+        "dependencies": [
+          "spi"
+        ]
+      },
+      "mcp3204": {
+        "dependencies": [
+          "spi"
+        ]
+      },
+      "mcp4461": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "mcp4728": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "mdns": {
+        "dependencies": [
+          "network"
+        ]
+      },
+      "micro_wake_word": {
+        "dependencies": [
+          "microphone"
+        ]
+      },
+      "micronova": {
+        "dependencies": [
+          "uart"
+        ]
+      },
+      "modbus": {
+        "dependencies": [
+          "uart"
+        ]
+      },
+      "modbus_controller": {},
+      "modbus_server": {},
+      "mopeka_ble": {
+        "dependencies": [
+          "esp32_ble_tracker"
+        ]
+      },
+      "mpr121": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "mqtt": {
+        "dependencies": [
+          "network"
+        ]
+      },
+      "msa3xx": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "my9231": {},
+      "network": {},
+      "nrf52": {},
+      "online_image": {
+        "dependencies": [
+          "display",
+          "http_request"
+        ]
+      },
+      "opentherm": {},
+      "openthread": {
+        "dependencies": [
+          "esp32"
+        ]
+      },
+      "packages": {},
+      "pca6416a": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "pca9554": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "pca9685": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "pcf8574": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "pi4ioe5v6408": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "pipsolar": {
+        "dependencies": [
+          "uart"
+        ]
+      },
+      "pn532": {},
+      "pn532_i2c": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "pn532_spi": {
+        "dependencies": [
+          "spi"
+        ]
+      },
+      "pn7150_i2c": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "pn7160_i2c": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "pn7160_spi": {
+        "dependencies": [
+          "spi"
+        ]
+      },
+      "power_supply": {},
+      "preferences": {},
+      "prometheus": {},
+      "psram": {
+        "dependencies": [
+          "esp32"
+        ]
+      },
+      "pylontech": {
+        "dependencies": [
+          "uart"
+        ]
+      },
+      "qr_code": {
+        "dependencies": [
+          "display"
+        ]
+      },
+      "radon_eye_ble": {
+        "dependencies": [
+          "esp32_ble_tracker"
+        ]
+      },
+      "rc522_i2c": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "rc522_spi": {
+        "dependencies": [
+          "spi"
+        ]
+      },
+      "rd03d": {
+        "dependencies": [
+          "uart"
+        ]
+      },
+      "rdm6300": {
+        "dependencies": [
+          "uart"
+        ]
+      },
+      "remote_receiver": {},
+      "remote_transmitter": {},
+      "rf_bridge": {
+        "dependencies": [
+          "uart"
+        ]
+      },
+      "rp2040": {},
+      "rp2040_ble": {
+        "dependencies": [
+          "rp2040"
+        ]
+      },
+      "rtl87xx": {},
+      "rtttl": {},
+      "runtime_stats": {},
+      "ruuvi_ble": {
+        "dependencies": [
+          "esp32_ble_tracker"
+        ]
+      },
+      "safe_mode": {},
+      "script": {},
+      "seeed_mr24hpc1": {
+        "dependencies": [
+          "uart"
+        ]
+      },
+      "seeed_mr60bha2": {
+        "dependencies": [
+          "uart"
+        ]
+      },
+      "seeed_mr60fda2": {
+        "dependencies": [
+          "uart"
+        ]
+      },
+      "sendspin": {
+        "dependencies": [
+          "network"
+        ]
+      },
+      "serial_proxy": {
+        "dependencies": [
+          "api",
+          "uart"
+        ]
+      },
+      "servo": {},
+      "sha256": {},
+      "sim800l": {
+        "dependencies": [
+          "uart"
+        ]
+      },
+      "sm16716": {},
+      "sm2135": {},
+      "sm2235": {},
+      "sm2335": {},
+      "sml": {
+        "dependencies": [
+          "uart"
+        ]
+      },
+      "sn74hc165": {},
+      "sn74hc595": {},
+      "socket": {},
+      "spi": {},
+      "spi_device": {
+        "dependencies": [
+          "spi"
+        ]
+      },
+      "split_buffer": {},
+      "sprinkler": {},
+      "statsd": {
+        "dependencies": [
+          "network"
+        ]
+      },
+      "status_led": {},
+      "substitutions": {},
+      "sun": {},
+      "sun_gtil2": {
+        "dependencies": [
+          "uart"
+        ]
+      },
+      "sx126x": {
+        "dependencies": [
+          "spi"
+        ]
+      },
+      "sx127x": {
+        "dependencies": [
+          "spi"
+        ]
+      },
+      "sx1509": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "sy6970": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "syslog": {
+        "dependencies": [
+          "udp",
+          "logger",
+          "time"
+        ]
+      },
+      "tca9548a": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "tca9555": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "teleinfo": {},
+      "tinyusb": {},
+      "tlc59208f": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "tlc5947": {},
+      "tlc5971": {},
+      "tm1651": {},
+      "ttp229_bsf": {},
+      "ttp229_lsf": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "tuya": {
+        "dependencies": [
+          "uart"
+        ]
+      },
+      "uart": {},
+      "udp": {
+        "dependencies": [
+          "network"
+        ]
+      },
+      "uponor_smatrix": {
+        "dependencies": [
+          "uart"
+        ]
+      },
+      "usb_cdc_acm": {
+        "dependencies": [
+          "tinyusb"
+        ]
+      },
+      "usb_host": {
+        "dependencies": [
+          "esp32"
+        ]
+      },
+      "usb_uart": {},
+      "vbus": {
+        "dependencies": [
+          "uart"
+        ]
+      },
+      "voice_assistant": {
+        "dependencies": [
+          "api",
+          "microphone"
+        ]
+      },
+      "web_server": {},
+      "web_server_base": {
+        "dependencies": [
+          "network"
+        ]
+      },
+      "web_server_idf": {},
+      "wiegand": {},
+      "wifi": {},
+      "wireguard": {
+        "dependencies": [
+          "time"
+        ]
+      },
+      "wk2132_i2c": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "wk2132_spi": {
+        "dependencies": [
+          "spi"
+        ]
+      },
+      "wk2168_i2c": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "wk2168_spi": {
+        "dependencies": [
+          "spi"
+        ]
+      },
+      "wk2204_i2c": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "wk2204_spi": {
+        "dependencies": [
+          "spi"
+        ]
+      },
+      "wk2212_i2c": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "wk2212_spi": {
+        "dependencies": [
+          "spi"
+        ]
+      },
+      "wled": {},
+      "xiaomi_ble": {
+        "dependencies": [
+          "esp32_ble_tracker"
+        ]
+      },
+      "xiaomi_rtcgq02lm": {
+        "dependencies": [
+          "esp32_ble_tracker"
+        ]
+      },
+      "xl9535": {
+        "dependencies": [
+          "i2c"
+        ]
+      },
+      "zephyr_ble_server": {},
+      "zigbee": {},
+      "zwave_proxy": {
+        "dependencies": [
+          "api",
+          "uart"
+        ]
+      }
+    },
+    "condition": {
+      "all": {
+        "is_list": true,
+        "registry": "condition",
+        "type": "registry"
+      },
+      "and": {
+        "is_list": true,
+        "registry": "condition",
+        "type": "registry"
+      },
+      "any": {
+        "is_list": true,
+        "registry": "condition",
+        "type": "registry"
+      },
+      "for": {
+        "schema": {
+          "config_vars": {
+            "condition": {
+              "key": "Required",
+              "registry": "condition",
+              "type": "registry"
+            },
+            "time": {
+              "key": "Required",
+              "schema": {
+                "extends": [
+                  "core.positive_time_period_milliseconds"
+                ]
+              },
+              "templatable": true,
+              "type": "schema"
+            }
+          },
+          "extends": [
+            "core.COMPONENT_SCHEMA"
+          ]
+        },
+        "type": "schema"
+      },
+      "lambda": {},
+      "not": {
+        "registry": "condition",
+        "type": "registry"
+      },
+      "or": {
+        "is_list": true,
+        "registry": "condition",
+        "type": "registry"
+      },
+      "xor": {
+        "is_list": true,
+        "registry": "condition",
+        "type": "registry"
+      }
+    },
+    "pins": [
+      "esp32",
+      "bk72xx",
+      "ch422g",
+      "ch423",
+      "esp8266",
+      "host",
+      "ln882x",
+      "max6956",
+      "mcp23xxx",
+      "mcp23016",
+      "mpr121",
+      "nrf52",
+      "pca6416a",
+      "pca9554",
+      "pcf8574",
+      "pi4ioe5v6408",
+      "rp2040",
+      "rtl87xx",
+      "sn74hc165",
+      "sn74hc595",
+      "sx1509",
+      "tca9555",
+      "wk2168_i2c",
+      "wk2168_spi",
+      "wk2212_i2c",
+      "wk2212_spi",
+      "xl9535",
+      "pcm5122"
+    ],
+    "platforms": {
+      "alarm_control_panel": {},
+      "audio_adc": {},
+      "audio_dac": {},
+      "binary_sensor": {},
+      "button": {},
+      "canbus": {},
+      "climate": {},
+      "cover": {},
+      "datetime": {},
+      "display": {},
+      "event": {},
+      "fan": {},
+      "infrared": {},
+      "light": {},
+      "lock": {},
+      "media_player": {},
+      "media_source": {},
+      "microphone": {},
+      "motion": {},
+      "number": {},
+      "one_wire": {},
+      "ota": {},
+      "output": {},
+      "packet_transport": {},
+      "radio_frequency": {},
+      "select": {},
+      "sensor": {},
+      "speaker": {},
+      "stepper": {},
+      "switch": {},
+      "text": {},
+      "text_sensor": {},
+      "time": {},
+      "touchscreen": {},
+      "update": {},
+      "valve": {},
+      "water_heater": {}
+    },
+    "schemas": {
+      "COMPONENT_SCHEMA": {
+        "schema": {
+          "config_vars": {
+            "setup_priority": {
+              "key": "Optional",
+              "visibility": "yaml_only"
+            }
+          }
+        },
+        "type": "schema"
+      },
+      "ENTITY_BASE_SCHEMA": {
+        "schema": {
+          "config_vars": {
+            "device_id": {
+              "key": "Optional",
+              "schema": {},
+              "type": "use_id",
+              "use_id_type": "Device"
+            },
+            "disabled_by_default": {
+              "default": "False",
+              "key": "Optional",
+              "type": "boolean"
+            },
+            "entity_category": {
+              "key": "Optional"
+            },
+            "icon": {
+              "key": "Optional"
+            },
+            "internal": {
+              "key": "Optional",
+              "type": "boolean"
+            },
+            "name": {
+              "key": "Optional"
+            }
+          }
+        },
+        "type": "schema"
+      },
+      "GIT_SCHEMA": {
+        "schema": {
+          "config_vars": {
+            "password": {
+              "key": "Optional",
+              "sensitive": true,
+              "sensitive_source": "heuristic",
+              "type": "string"
+            },
+            "path": {
+              "key": "Optional",
+              "type": "string"
+            },
+            "ref": {
+              "key": "Optional"
+            },
+            "url": {
+              "key": "Required"
+            },
+            "username": {
+              "key": "Optional",
+              "type": "string"
+            }
+          }
+        },
+        "type": "schema"
+      },
+      "MQTT_COMMAND_COMPONENT_SCHEMA": {
+        "schema": {
+          "config_vars": {
+            "command_retain": {
+              "key": "Optional",
+              "type": "boolean"
+            },
+            "command_topic": {
+              "key": "Optional",
+              "templatable": true
+            }
+          },
+          "extends": [
+            "core.MQTT_COMPONENT_SCHEMA"
+          ]
+        },
+        "type": "schema"
+      },
+      "MQTT_COMPONENT_SCHEMA": {
+        "schema": {
+          "config_vars": {
+            "availability": {
+              "key": "Optional",
+              "schema": {
+                "config_vars": {
+                  "payload_available": {
+                    "default": "online",
+                    "key": "Optional"
+                  },
+                  "payload_not_available": {
+                    "default": "offline",
+                    "key": "Optional"
+                  },
+                  "topic": {
+                    "key": "Required"
+                  }
+                }
+              },
+              "type": "schema"
+            },
+            "discovery": {
+              "key": "Optional",
+              "type": "boolean"
+            },
+            "qos": {
+              "key": "Optional"
+            },
+            "retain": {
+              "key": "Optional",
+              "type": "boolean"
+            },
+            "state_topic": {
+              "key": "Optional",
+              "templatable": true
+            },
+            "subscribe_qos": {
+              "key": "Optional"
+            }
+          }
+        },
+        "type": "schema"
+      },
+      "positive_time_period": {
+        "schema": {
+          "extends": [
+            "core.time_period"
+          ]
+        },
+        "type": "schema"
+      },
+      "positive_time_period_microseconds": {
+        "schema": {
+          "extends": [
+            "core.positive_time_period"
+          ]
+        },
+        "type": "schema"
+      },
+      "positive_time_period_milliseconds": {
+        "schema": {
+          "extends": [
+            "core.positive_time_period"
+          ]
+        },
+        "type": "schema"
+      },
+      "positive_time_period_minutes": {
+        "schema": {
+          "extends": [
+            "core.positive_time_period"
+          ]
+        },
+        "type": "schema"
+      },
+      "positive_time_period_nanoseconds": {
+        "schema": {
+          "extends": [
+            "core.positive_time_period"
+          ]
+        },
+        "type": "schema"
+      },
+      "positive_time_period_seconds": {
+        "schema": {
+          "extends": [
+            "core.positive_time_period"
+          ]
+        },
+        "type": "schema"
+      },
+      "time_period": {
+        "schema": {
+          "config_vars": {
+            "days": {
+              "key": "Optional"
+            },
+            "hours": {
+              "key": "Optional"
+            },
+            "microseconds": {
+              "key": "Optional"
+            },
+            "milliseconds": {
+              "key": "Optional"
+            },
+            "minutes": {
+              "key": "Optional"
+            },
+            "seconds": {
+              "key": "Optional"
+            }
+          }
+        },
+        "type": "schema"
+      }
+    }
+  },
+  "esphome": {
+    "schemas": {
+      "CONFIG_SCHEMA": {
+        "schema": {
+          "config_vars": {
+            "area": {
+              "key": "Optional"
+            },
+            "areas": {
+              "default": "[]",
+              "is_list": true,
+              "key": "Optional",
+              "schema": {
+                "config_vars": {
+                  "id": {
+                    "id_type": {
+                      "class": "Area",
+                      "parents": []
+                    },
+                    "key": "GeneratedID"
+                  },
+                  "name": {
+                    "key": "Required"
+                  }
+                }
+              },
+              "type": "schema"
+            },
+            "build_flags": {
+              "default": "[]",
+              "is_list": true,
+              "key": "Optional",
+              "type": "string"
+            },
+            "build_path": {
+              "key": "Required",
+              "type": "string"
+            },
+            "comment": {
+              "key": "Optional",
+              "type": "string"
+            },
+            "compile_process_limit": {
+              "key": "Optional",
+              "type": "integer"
+            },
+            "debug_scheduler": {
+              "default": "False",
+              "key": "Optional",
+              "type": "boolean"
+            },
+            "devices": {
+              "default": "[]",
+              "is_list": true,
+              "key": "Optional",
+              "schema": {
+                "config_vars": {
+                  "area_id": {
+                    "key": "Optional",
+                    "type": "use_id",
+                    "use_id_type": "Area"
+                  },
+                  "id": {
+                    "id_type": {
+                      "class": "Device",
+                      "parents": []
+                    },
+                    "key": "GeneratedID"
+                  },
+                  "name": {
+                    "key": "Required"
+                  }
+                }
+              },
+              "type": "schema"
+            },
+            "environment_variables": {
+              "default": "{}",
+              "key": "String",
+              "key_type": "string_strict",
+              "schema": {
+                "config_vars": {
+                  "string": {
+                    "type": "string"
+                  }
+                }
+              },
+              "type": "schema"
+            },
+            "friendly_name": {
+              "default": "",
+              "key": "Optional"
+            },
+            "includes": {
+              "default": "[]",
+              "is_list": true,
+              "key": "Optional"
+            },
+            "includes_c": {
+              "default": "[]",
+              "is_list": true,
+              "key": "Optional"
+            },
+            "libraries": {
+              "default": "[]",
+              "is_list": true,
+              "key": "Optional",
+              "type": "string"
+            },
+            "min_version": {
+              "default": "2026.6.0-dev",
+              "key": "Optional"
+            },
+            "name": {
+              "key": "Required",
+              "type": "string"
+            },
+            "name_add_mac_suffix": {
+              "default": "False",
+              "key": "Optional",
+              "type": "boolean"
+            },
+            "on_boot": {
+              "key": "Optional",
+              "schema": {
+                "config_vars": {
+                  "priority": {
+                    "default": "600.0",
+                    "key": "Optional"
+                  },
+                  "then": {
+                    "type": "trigger"
+                  }
+                }
+              },
+              "type": "trigger"
+            },
+            "on_loop": {
+              "key": "Optional",
+              "type": "trigger"
+            },
+            "on_shutdown": {
+              "key": "Optional",
+              "schema": {
+                "config_vars": {
+                  "priority": {
+                    "default": "600.0",
+                    "key": "Optional"
+                  },
+                  "then": {
+                    "type": "trigger"
+                  }
+                }
+              },
+              "type": "trigger"
+            },
+            "platformio_options": {
+              "default": "{}",
+              "key": "String",
+              "key_type": "string_strict",
+              "schema": {
+                "config_vars": {
+                  "string": {
+                    "type": "string"
+                  }
+                }
+              },
+              "type": "schema"
+            },
+            "project": {
+              "key": "Optional",
+              "schema": {
+                "config_vars": {
+                  "name": {
+                    "key": "Required",
+                    "type": "string"
+                  },
+                  "on_update": {
+                    "key": "Optional",
+                    "type": "trigger"
+                  },
+                  "version": {
+                    "key": "Required",
+                    "type": "string"
+                  }
+                }
+              },
+              "type": "schema"
+            }
+          }
+        },
+        "type": "schema"
+      }
+    }
+  },
+  "esphome.ota": {
+    "schemas": {
+      "CONFIG_SCHEMA": {
+        "schema": {
+          "config_vars": {
+            "allow_partition_access": {
+              "default": "False",
+              "key": "Optional",
+              "type": "boolean"
+            },
+            "id": {
+              "id_type": {
+                "class": "esphome::ESPHomeOTAComponent",
+                "parents": [
+                  "ota::OTAComponent",
+                  "Component"
+                ]
+              },
+              "key": "GeneratedID"
+            },
+            "password": {
+              "key": "Optional",
+              "sensitive": true,
+              "sensitive_source": "explicit",
+              "type": "string"
+            },
+            "port": {
+              "data_type": "port",
+              "default": "8266",
+              "key": "Optional",
+              "type": "integer"
+            },
+            "version": {
+              "default": "2",
+              "key": "Optional",
+              "type": "enum",
+              "values": {
+                "1": null,
+                "2": null
+              }
+            }
+          },
+          "extends": [
+            "ota.BASE_OTA_SCHEMA",
+            "core.COMPONENT_SCHEMA"
+          ]
+        },
+        "type": "schema"
+      }
+    }
+  }
+}

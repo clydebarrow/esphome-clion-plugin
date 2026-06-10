@@ -72,6 +72,39 @@ class EsphomeCompletionTest : BasePlatformTestCase() {
         assertContainsElements(items, "on_boot", "on_all_events")
     }
 
+    /**
+     * lvgl is driven by the raw language schema (recursive widget tree, extends).
+     * These exercise the language-schema path: root keys, widget types under the
+     * `widgets:` list, and a widget's resolved properties.
+     */
+    fun `test lvgl root keys from language schema`() {
+        val items = complete("esphome:\n  name: x\nlvgl:\n  <caret>\n")
+        assertContainsElements(items, "displays", "widgets", "bg_color")
+    }
+
+    fun `test lvgl widget types under widgets`() {
+        val items = complete("esphome:\n  name: x\nlvgl:\n  widgets:\n    - <caret>\n")
+        assertContainsElements(items, "obj", "label", "button")
+    }
+
+    fun `test lvgl widget properties resolve through extends`() {
+        val items = complete("esphome:\n  name: x\nlvgl:\n  widgets:\n    - label:\n        <caret>\n")
+        assertContainsElements(items, "align", "bg_color")
+    }
+
+    /** Nested widgets: a container's child widgets resolve through the recursive
+     * `lvgl.WIDGET_TYPES` ref (cycle-guarded), so completion works arbitrarily deep. */
+    fun `test lvgl nested widget completion`() {
+        val widgetTypes = complete(
+            "esphome:\n  name: x\nlvgl:\n  widgets:\n    - obj:\n        widgets:\n          - <caret>\n",
+        )
+        assertContainsElements(widgetTypes, "obj", "label", "button")
+        val nestedProps = complete(
+            "esphome:\n  name: x\nlvgl:\n  widgets:\n    - obj:\n        widgets:\n          - label:\n              <caret>\n",
+        )
+        assertContainsElements(nestedProps, "align", "bg_color")
+    }
+
     /** In an automation list (under a trigger `on_*`), keys are action names. */
     fun `test actions are suggested in an automation list`() {
         val items = complete(

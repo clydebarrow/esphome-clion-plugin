@@ -21,6 +21,7 @@ import io.esphome.clion.references.EsphomeIdReferences
 import io.esphome.clion.services.EsphomeCatalogService
 import io.esphome.clion.services.EsphomeIds
 import io.esphome.clion.services.EsphomeIncludeGraph
+import io.esphome.clion.services.EsphomeLangSchemaService
 import io.esphome.clion.services.EsphomeSubstitutions
 import org.jetbrains.yaml.YAMLLanguage
 import org.jetbrains.yaml.psi.YAMLFile
@@ -170,6 +171,18 @@ private object EsphomeCompletionProvider : CompletionProvider<CompletionParamete
             }
         }
 
+        // lvgl is driven by the raw language schema instead of the flat catalog:
+        // its widget tree is recursive (a widget contains widgets) and its style
+        // `extends` flatten to ~15 MB. The language-schema repo resolves keys
+        // lazily, so nested widgets and properties work compactly.
+        if (path.firstOrNull() == "lvgl") {
+            EsphomeLangSchemaService.getInstance().repository
+                .keysAt("lvgl", path.drop(1)).keys.asSequence()
+                .filter { it !in present }
+                .forEach { result.addElement(keyLookup(it, null)) }
+            return
+        }
+
         if (path.isEmpty()) {
             repo.topLevelKeys.asSequence()
                 .filter { it !in present }
@@ -221,6 +234,19 @@ private object EsphomeCompletionProvider : CompletionProvider<CompletionParamete
         // `platform:` value → the platforms available under the domain.
         if (keyValue.keyText == EsphomeYaml.PLATFORM_KEY && path.isNotEmpty() && repo.isDomain(path[0])) {
             repo.platformsFor(path[0]).forEach { result.addElement(LookupElementBuilder.create(it)) }
+            return
+        }
+
+        // lvgl values come from the language schema (see addKeyCompletions).
+        if (path.firstOrNull() == "lvgl") {
+            val node = EsphomeLangSchemaService.getInstance().repository
+                .keysAt("lvgl", path.drop(1))[keyValue.keyText] ?: return
+            when (node.type) {
+                "enum" -> node.values?.keys?.forEach { result.addElement(LookupElementBuilder.create(it)) }
+                "boolean" -> for (v in listOf("true", "false")) {
+                    result.addElement(LookupElementBuilder.create(v).withTypeText("boolean"))
+                }
+            }
             return
         }
 
