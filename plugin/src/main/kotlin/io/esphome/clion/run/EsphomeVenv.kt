@@ -5,7 +5,9 @@ import com.intellij.execution.configurations.PathEnvironmentVariableUtil
 import com.intellij.execution.process.CapturingProcessHandler
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.PathManager
+import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.progress.Task
@@ -49,23 +51,39 @@ object EsphomeVenv {
                     dir().parentFile?.mkdirs()
                     indicator.text = "Creating virtual environment…"
                     step(listOf(basePython(), "-m", "venv", dir().path), indicator)
-                    val pkg = if (version.isBlank()) "esphome" else "esphome==$version"
-                    indicator.text = "Installing $pkg (this can take a while)…"
+                    val install = pipRequirement(version)
+                    indicator.text = "Installing esphome (${version.ifBlank { "latest" }})…"
                     step(
-                        listOf(
-                            bin("python").path, "-m", "pip", "install",
-                            "--upgrade", "--disable-pip-version-check", pkg,
-                        ),
+                        listOf(bin("python").path, "-m", "pip", "install", "--upgrade", "--disable-pip-version-check") +
+                            install,
                         indicator,
                     )
                     notify("ESPHome venv ready: ${esphome().path}", NotificationType.INFORMATION)
                 }
 
                 override fun onThrowable(error: Throwable) {
-                    notify("ESPHome venv setup failed: ${error.message}", NotificationType.ERROR)
+                    thisLogger().warn("ESPHome venv setup failed", error)
+                    notify(error.message ?: "ESPHome venv setup failed.", NotificationType.ERROR)
                 }
             },
         )
+    }
+
+    /**
+     * Map a [version] field to `pip install` arguments. A bare `==dev` is not a
+     * valid version specifier, so named channels resolve to the right form:
+     *   blank/"latest" → esphome; "beta" → --pre esphome; "dev" or any other
+     *   non-numeric value → the matching esphome git branch/tag; otherwise a
+     *   numeric value (`2025.7.0`, `2025.7.0b1`) → `esphome==<version>`.
+     */
+    internal fun pipRequirement(version: String): List<String> {
+        val v = version.trim()
+        return when {
+            v.isEmpty() || v.equals("latest", ignoreCase = true) -> listOf("esphome")
+            v.equals("beta", ignoreCase = true) -> listOf("--pre", "esphome")
+            v.first().isDigit() -> listOf("esphome==$v")
+            else -> listOf("git+https://github.com/esphome/esphome.git@$v")
+        }
     }
 
     private fun step(command: List<String>, indicator: ProgressIndicator) {
@@ -79,7 +97,10 @@ object EsphomeVenv {
     }
 
     private fun notify(message: String, type: NotificationType) {
-        NotificationGroupManager.getInstance().getNotificationGroup("ESPHome")
-            .createNotification("ESPHome", message, type).notify(null)
+        val notification = NotificationGroupManager.getInstance().getNotificationGroup("ESPHome")
+            .createNotification("ESPHome venv", message, type)
+        // Notifications must be posted on the EDT; provisioning runs on a pooled
+        // background thread, so hop over explicitly.
+        ApplicationManager.getApplication().invokeLater { notification.notify(null) }
     }
 }
