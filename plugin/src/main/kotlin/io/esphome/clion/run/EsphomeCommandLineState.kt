@@ -2,6 +2,7 @@ package io.esphome.clion.run
 
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.configurations.PathEnvironmentVariableUtil
+import com.intellij.execution.configurations.PtyCommandLine
 import com.intellij.execution.process.KillableColoredProcessHandler
 import com.intellij.execution.process.ProcessHandler
 import com.intellij.execution.process.ProcessTerminatedListener
@@ -19,7 +20,11 @@ class EsphomeCommandLineState(
 ) : CommandLineState(environment) {
 
     override fun startProcess(): ProcessHandler {
-        val handler = KillableColoredProcessHandler(buildCommandLine())
+        // Run under a pseudo-terminal: otherwise ESPHome/PlatformIO see no TTY
+        // and print compile/upload progress as separate scrolling lines instead
+        // of overwriting one line with `\r`, which the console renders in place.
+        val commandLine = PtyCommandLine(buildCommandLine()).withConsoleMode(false)
+        val handler = KillableColoredProcessHandler(commandLine)
         ProcessTerminatedListener.attach(handler)
         return handler
     }
