@@ -90,5 +90,9 @@
             enabledByDefault="true"
             level="WARNING"
             implementationClass="io.esphome.clion.inspections.EsphomeUnresolvedSubstitutionInspection"/>
+
+        <configurationType implementation="io.esphome.clion.run.EsphomeRunConfigurationType"/>
+        <runConfigurationProducer
+            implementation="io.esphome.clion.run.EsphomeRunConfigurationProducer"/>
     </extensions>
 </idea-plugin>
