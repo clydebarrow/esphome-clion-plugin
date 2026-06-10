@@ -5,6 +5,7 @@ import io.esphome.clion.catalog.CatalogRepository
 import io.esphome.clion.catalog.ConfigEntryType
 import io.esphome.clion.psi.EsphomeResolution
 import io.esphome.clion.psi.EsphomeTarget
+import io.esphome.clion.psi.EsphomeYaml
 import io.esphome.clion.services.EsphomeIds
 import org.jetbrains.yaml.psi.YAMLKeyValue
 import org.jetbrains.yaml.psi.YAMLScalar
@@ -57,17 +58,24 @@ object EsphomeIdReferences {
      */
     fun isPotentialIdReference(scalar: YAMLScalar): Boolean {
         val keyValue = owningKeyValue(scalar) ?: return false
-        if (keyValue.keyText == ID_KEY) return false // a declaration, not a reference
+        // A plain `id:` is a declaration, but `id: !extend X` / `id: !remove X`
+        // reference the X declared in a package — so those navigate like a use.
+        if (keyValue.keyText == ID_KEY) {
+            return EsphomeYaml.isMergeTaggedId(scalar) && scalar.textValue.matches(ID_TOKEN)
+        }
         return scalar.textValue.matches(ID_TOKEN)
     }
 
     /**
      * If [scalar] is the value of an `id:` declaration, the declared id name;
-     * otherwise null. Used by Find Usages and Rename to recognise the target.
+     * otherwise null. Used by Find Usages and Rename to recognise the target. An
+     * `id: !extend`/`!remove` is a *reference* to a package declaration, not a
+     * declaration itself, so it is excluded.
      */
     fun declaredIdName(scalar: YAMLScalar): String? {
         val keyValue = scalar.parent as? YAMLKeyValue ?: return null
         if (keyValue.keyText != ID_KEY || keyValue.value !== scalar) return null
+        if (EsphomeYaml.isMergeTaggedId(scalar)) return null
         return scalar.textValue.takeIf { it.isNotEmpty() && !it.contains("\${") && it.matches(ID_TOKEN) }
     }
 

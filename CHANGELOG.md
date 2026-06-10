@@ -7,6 +7,12 @@ release.
 
 ## [Unreleased]
 
+### Fixed
+
+- `id: !extend X` / `id: !remove X` in a `packages:`-based config now link to the
+  `id: X` declared in the package — go-to-definition and find-usages connect the
+  two, and the override is no longer mistaken for a second declaration of `X`.
+
 ## [0.9.1]
 
 ### Changed

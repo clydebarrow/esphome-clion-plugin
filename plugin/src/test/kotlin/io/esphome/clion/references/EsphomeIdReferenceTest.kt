@@ -72,6 +72,29 @@ class EsphomeIdReferenceTest : BasePlatformTestCase() {
         assertEquals("bus_a", resolvedNameAt(text, "i2c_id: bus_a", "bus_a"))
     }
 
+    fun `test id !extend resolves to the package declaration it modifies`() {
+        // `id: !extend X` in a config using `packages:` references the X declared
+        // in the package (to override it), so it must link to that declaration —
+        // not be treated as a new id of its own.
+        myFixture.addFileToProject(
+            "p/gyro.yaml",
+            "binary_sensor:\n  - platform: template\n    id: free_fall_id\n    name: Free Fall\n",
+        )
+        val text = """
+            esphome:
+              name: x
+            packages:
+              gyro: !include gyro.yaml
+            binary_sensor:
+              - id: !extend free_fall_id
+                filters:
+                  - delayed_on: 10ms
+        """.trimIndent()
+        val vf = myFixture.addFileToProject("p/device.yaml", text).virtualFile
+        myFixture.configureFromExistingVirtualFile(vf)
+        assertEquals("free_fall_id", resolvedNameAt(text, "id: !extend free_fall_id", "free_fall_id"))
+    }
+
     fun `test name-based fallback resolves an id under an unmodeled component`() {
         // lvgl ships no catalog fields, so `display:` here has no references_component;
         // the fallback still links the identifier value to the display id declaration.
