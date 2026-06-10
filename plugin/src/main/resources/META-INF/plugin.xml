@@ -94,5 +94,11 @@
         <configurationType implementation="io.esphome.clion.run.EsphomeRunConfigurationType"/>
         <runConfigurationProducer
             implementation="io.esphome.clion.run.EsphomeRunConfigurationProducer"/>
+
+        <toolWindow
+            id="ESPHome Device"
+            anchor="bottom"
+            icon="AllIcons.Nodes.Plugin"
+            factoryClass="io.esphome.clion.api.toolwindow.EsphomeApiToolWindowFactory"/>
     </extensions>
 </idea-plugin>
