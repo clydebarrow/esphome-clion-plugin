@@ -1,0 +1,38 @@
+name: Deploy docs site
+
+# Publishes the static showcase/user-guide site in site/ to GitHub Pages.
+# Enable once with: Settings → Pages → Source: GitHub Actions (or via
+# `gh api repos/<owner>/<repo>/pages -X POST -f build_type=workflow`).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One concurrent deploy; let an in-progress run finish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4
