@@ -7,11 +7,20 @@ release.
 
 ## [Unreleased]
 
+## [0.9.1]
+
 ### Changed
 
 - Config validation now runs `esphome config` on the **same backend** as a run
   (the default backend: Local / managed venv / Docker), so the editor's errors
   come from the same ESPHome you build with — no separate executable to wire up.
+
+### Fixed
+
+- Validating an `!include`d fragment now also saves the device root it runs
+  against, so changes there aren't checked against stale on-disk content.
+- Backend-specific messages when validation can't start (no esphome, venv not
+  set up, or Docker missing) instead of a silent no-op.
 
 ## [0.9.0]
 
