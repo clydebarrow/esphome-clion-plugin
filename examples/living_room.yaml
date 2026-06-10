@@ -16,16 +16,14 @@ host:
 wifi:
   ssid: "MyNetwork"
   password: "secret"
-  fast_connect: true
+  fast_connect: on
   ap:
     channel: 1
     ssid: "Living Room Fallback"
 
 
 binary_sensor:
-  - platform: gpxo
-
-
+  - platform: gpio
     id: fred
 
 i2c:

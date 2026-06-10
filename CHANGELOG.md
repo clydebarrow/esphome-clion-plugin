@@ -7,6 +7,8 @@ release.
 
 ## [Unreleased]
 
+## [0.9.0]
+
 ### Added
 
 - Run configurations to **compile / run / upload / logs / clean** an ESPHome
