@@ -32,8 +32,12 @@ class EsphomeSettingsConfigurable : BoundConfigurable("ESPHome") {
             row("Default backend:") {
                 comboBox(listOf(BACKEND_LOCAL, BACKEND_DOCKER))
                     .applyToComponent {
-                        renderer = SimpleListCellRenderer.create("") {
-                            if (it == BACKEND_DOCKER) "Docker" else "Local esphome"
+                        renderer = SimpleListCellRenderer.create { label, value, _ ->
+                            label.text = when (value) {
+                                BACKEND_DOCKER -> "Docker"
+                                BACKEND_LOCAL -> "Local esphome"
+                                else -> ""
+                            }
                         }
                     }
                     .bindItem(
