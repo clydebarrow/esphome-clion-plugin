@@ -92,6 +92,19 @@ class EsphomeCompletionTest : BasePlatformTestCase() {
         assertContainsElements(items, "align", "bg_color")
     }
 
+    /** Nested widgets: a container's child widgets resolve through the recursive
+     * `lvgl.WIDGET_TYPES` ref (cycle-guarded), so completion works arbitrarily deep. */
+    fun `test lvgl nested widget completion`() {
+        val widgetTypes = complete(
+            "esphome:\n  name: x\nlvgl:\n  widgets:\n    - obj:\n        widgets:\n          - <caret>\n",
+        )
+        assertContainsElements(widgetTypes, "obj", "label", "button")
+        val nestedProps = complete(
+            "esphome:\n  name: x\nlvgl:\n  widgets:\n    - obj:\n        widgets:\n          - label:\n              <caret>\n",
+        )
+        assertContainsElements(nestedProps, "align", "bg_color")
+    }
+
     /** In an automation list (under a trigger `on_*`), keys are action names. */
     fun `test actions are suggested in an automation list`() {
         val items = complete(
