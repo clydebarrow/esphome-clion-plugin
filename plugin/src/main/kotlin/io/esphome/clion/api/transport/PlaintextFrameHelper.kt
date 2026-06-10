@@ -30,8 +30,9 @@ class PlaintextFrameHelper(
         val preamble = input.read()
         if (preamble < 0) throw java.io.EOFException("connection closed")
         require(preamble == 0x00) { "bad preamble byte $preamble (encryption required?)" }
-        val length = FrameHelper.readVarint(input).toInt()
+        val length = FrameHelper.readVarint(input)
+        require(length in 0..FrameHelper.MAX_PAYLOAD.toLong()) { "frame length $length out of range" }
         val type = FrameHelper.readVarint(input).toInt()
-        return FrameHelper.Frame(type, FrameHelper.readExact(input, length))
+        return FrameHelper.Frame(type, FrameHelper.readExact(input, length.toInt()))
     }
 }

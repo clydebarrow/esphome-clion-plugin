@@ -61,7 +61,11 @@ class ProtoReader(private val buf: ByteArray, private var pos: Int = 0, private 
         when (wire) {
             0 -> readVarint()
             1 -> pos += 8
-            2 -> pos += readVarint().toInt()
+            2 -> {
+                val len = readVarint()
+                require(len in 0..(end - pos).toLong()) { "length-delimited field out of range" }
+                pos += len.toInt()
+            }
             5 -> pos += 4
             else -> error("unknown wire type $wire")
         }

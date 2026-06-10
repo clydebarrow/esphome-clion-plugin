@@ -20,6 +20,13 @@ interface FrameHelper {
     data class Frame(val type: Int, val payload: ByteArray)
 
     companion object {
+        /**
+         * Upper bound on a single frame's payload, so a malformed/hostile peer
+         * can't drive a huge allocation and OOM the IDE. ESPHome's own messages
+         * are far smaller than this.
+         */
+        const val MAX_PAYLOAD = 1 shl 20 // 1 MiB
+
         /** Read a base-128 varint from [input], or throw on EOF. */
         fun readVarint(input: InputStream): Long {
             var result = 0L

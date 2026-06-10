@@ -100,13 +100,27 @@ class EsphomeApiPanel(private val project: Project) :
     }
 
     private fun parseHostPort(raw: String): Pair<String, Int> {
-        val colon = raw.lastIndexOf(':')
-        if (colon > 0) {
-            val maybePort = raw.substring(colon + 1).toIntOrNull()
-            if (maybePort != null) return raw.substring(0, colon) to maybePort
+        val defaultPort = target?.port ?: EsphomeApiTarget.DEFAULT_PORT
+        // Bracketed IPv6, e.g. [fe80::1] or [fe80::1]:6053
+        if (raw.startsWith("[")) {
+            val close = raw.indexOf(']')
+            if (close > 1) {
+                val host = raw.substring(1, close)
+                val rest = raw.substring(close + 1)
+                val port = if (rest.startsWith(":")) validPort(rest.substring(1)) else null
+                return host to (port ?: defaultPort)
+            }
         }
-        return raw to (target?.port ?: EsphomeApiTarget.DEFAULT_PORT)
+        // host:port only with a single colon — a bare IPv6 literal has several.
+        if (raw.count { it == ':' } == 1) {
+            val host = raw.substringBefore(':')
+            val port = validPort(raw.substringAfter(':'))
+            if (host.isNotEmpty() && port != null) return host to port
+        }
+        return raw to defaultPort
     }
+
+    private fun validPort(s: String): Int? = s.toIntOrNull()?.takeIf { it in 1..65535 }
 
     private fun hostPort(host: String, port: Int): String =
         if (port == EsphomeApiTarget.DEFAULT_PORT) host else "$host:$port"

@@ -1,5 +1,7 @@
 package io.esphome.clion.api
 
+import io.esphome.clion.api.proto.ProtoWriter
+import io.esphome.clion.api.transport.FrameHelper
 import io.esphome.clion.api.transport.PlaintextFrameHelper
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -32,5 +34,14 @@ class PlaintextFrameHelperTest {
         val read = PlaintextFrameHelper(ByteArrayInputStream(wire.toByteArray()), ByteArrayOutputStream()).readMessage()
         assertEquals(16, read.type)
         assertArrayEquals(payload, read.payload)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `an over-length frame is rejected before allocating`() {
+        val bad = ByteArrayOutputStream()
+        bad.write(0x00)
+        bad.write(ProtoWriter.varint(FrameHelper.MAX_PAYLOAD.toLong() + 1))
+        bad.write(ProtoWriter.varint(1))
+        PlaintextFrameHelper(ByteArrayInputStream(bad.toByteArray()), ByteArrayOutputStream()).readMessage()
     }
 }
