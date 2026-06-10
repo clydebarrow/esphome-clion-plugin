@@ -7,6 +7,7 @@ import com.intellij.execution.process.ProcessHandler
 import com.intellij.execution.process.ProcessTerminatedListener
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.configurations.CommandLineState
+import com.intellij.util.execution.ParametersListUtil
 import io.esphome.clion.settings.EsphomeSettings
 import java.io.File
 import java.nio.charset.StandardCharsets
@@ -31,6 +32,11 @@ class EsphomeCommandLineState(
         dockerExecutable = EsphomeCommandLines.resolveDocker(),
         dockerImage = configuration.dockerImage,
         device = configuration.device,
+        stateReporting = configuration.stateReporting,
+        extraArgs = configuration.extraArgs,
+        // Persist PlatformIO toolchains across Docker runs instead of
+        // re-downloading them into each project's .esphome dir.
+        cacheDir = EsphomeSettings.getInstance().dockerCacheDir(),
     )
 }
 
@@ -44,24 +50,35 @@ object EsphomeCommandLines {
         dockerImage: String,
         device: String?,
         dockerExecutable: String = "docker",
+        stateReporting: StateReporting = StateReporting.DEFAULT,
+        extraArgs: String? = null,
+        cacheDir: File? = null,
     ): GeneralCommandLine {
-        val deviceArgs = device?.trim()
-            ?.takeIf { it.isNotEmpty() && command.usesDevice }
-            ?.let { listOf("--device", it) }
-            ?: emptyList()
+        // Trailing args common to both backends: device, state reporting, extras.
+        val trailing = buildList {
+            device?.trim()?.takeIf { it.isNotEmpty() && command.usesDevice }
+                ?.let { addAll(listOf("--device", it)) }
+            if (command.streamsLogs) stateReporting.flag?.let(::add)
+            addAll(ParametersListUtil.parse(extraArgs.orEmpty()))
+        }
 
         val commandLine = when (backend) {
             EsphomeBackend.LOCAL -> {
                 val exe = executable ?: error("esphome executable not found")
-                GeneralCommandLine(exe, command.id, configFile.path).withParams(deviceArgs)
+                GeneralCommandLine(exe, command.id, configFile.path).withParams(trailing)
             }
-            // Mount the config's directory at /config (ESPHome's working dir) and
-            // run the command on the file by name. Serial devices won't pass
-            // through on macOS; OTA (network) works.
+            // Mount the config's directory at /config (ESPHome's working dir),
+            // plus a persistent host cache at /cache, and run on the file by
+            // name. Serial devices won't pass through on macOS; OTA works.
             EsphomeBackend.DOCKER -> {
                 val dir = configFile.parentFile?.path ?: "."
-                GeneralCommandLine(dockerExecutable, "run", "--rm", "-v", "$dir:/config", "-w", "/config")
-                    .withParams(listOf(dockerImage, command.id, configFile.name) + deviceArgs)
+                val mounts = buildList {
+                    addAll(listOf("-v", "$dir:/config"))
+                    cacheDir?.let { addAll(listOf("-v", "${it.path}:/cache")) }
+                }
+                GeneralCommandLine(dockerExecutable)
+                    .withParams(listOf("run", "--rm") + mounts + listOf("-w", "/config", dockerImage, command.id, configFile.name))
+                    .withParams(trailing)
             }
         }
         return commandLine

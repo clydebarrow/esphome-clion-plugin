@@ -7,6 +7,7 @@ import com.intellij.execution.configurations.ConfigurationTypeUtil
 import com.intellij.openapi.util.Ref
 import com.intellij.psi.PsiElement
 import io.esphome.clion.psi.EsphomeYaml
+import io.esphome.clion.settings.EsphomeSettings
 import org.jetbrains.yaml.psi.YAMLFile
 
 /**
@@ -30,6 +31,10 @@ class EsphomeRunConfigurationProducer : LazyRunConfigurationProducer<EsphomeRunC
         if (!EsphomeYaml.isStandaloneConfig(file)) return false
         val virtualFile = file.virtualFile ?: return false
         configuration.configPath = virtualFile.path
+        // Start from the user's configured defaults.
+        val settings = EsphomeSettings.getInstance()
+        configuration.backend = EsphomeBackend.of(settings.state.defaultBackend)
+        configuration.dockerImage = settings.state.dockerImage ?: EsphomeRunOptions.DEFAULT_DOCKER_IMAGE
         configuration.name = "esphome ${configuration.command.id} ${virtualFile.name}"
         return true
     }

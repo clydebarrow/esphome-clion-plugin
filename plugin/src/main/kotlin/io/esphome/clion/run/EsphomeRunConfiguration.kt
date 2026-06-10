@@ -44,6 +44,14 @@ class EsphomeRunConfiguration(
         get() = options.device
         set(value) { options.device = value }
 
+    var stateReporting: StateReporting
+        get() = StateReporting.of(options.stateReporting)
+        set(value) { options.stateReporting = value.id }
+
+    var extraArgs: String?
+        get() = options.extraArgs
+        set(value) { options.extraArgs = value }
+
     override fun getConfigurationEditor(): SettingsEditor<out RunConfigurationBase<*>> =
         EsphomeRunConfigurationEditor()
 

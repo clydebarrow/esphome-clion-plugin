@@ -10,8 +10,9 @@ import com.intellij.openapi.components.service
 import java.io.File
 
 /**
- * Persisted ESPHome plugin settings. Currently just the path to the `esphome`
- * executable used for validation; blank means "auto-detect from PATH".
+ * Persisted ESPHome plugin settings: the `esphome` executable (blank =
+ * auto-detect from PATH) used for validation, plus the defaults new run
+ * configurations start from (backend and Docker image).
  */
 @Service
 @State(name = "EsphomeSettings", storages = [Storage("esphome.xml")])
@@ -19,6 +20,12 @@ class EsphomeSettings : SimplePersistentStateComponent<EsphomeSettings.State>(St
 
     class State : BaseState() {
         var executablePath: String? by string("")
+
+        /** Default backend for new run configs: `local` or `docker`. */
+        var defaultBackend: String? by string(DEFAULT_BACKEND)
+
+        /** Default image for the Docker backend. */
+        var dockerImage: String? by string(DEFAULT_DOCKER_IMAGE)
     }
 
     /**
@@ -33,7 +40,14 @@ class EsphomeSettings : SimplePersistentStateComponent<EsphomeSettings.State>(St
         return PathEnvironmentVariableUtil.findInPath("esphome")?.absolutePath
     }
 
+    /** Persistent host cache directory mounted into the Docker container's `/cache`. */
+    fun dockerCacheDir(): File =
+        File(System.getProperty("user.home"), ".cache/esphome").apply { mkdirs() }
+
     companion object {
+        const val DEFAULT_BACKEND = "local"
+        const val DEFAULT_DOCKER_IMAGE = "ghcr.io/esphome/esphome:latest"
+
         fun getInstance(): EsphomeSettings = service()
     }
 }

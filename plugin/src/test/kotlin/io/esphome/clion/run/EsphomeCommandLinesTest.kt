@@ -14,8 +14,12 @@ class EsphomeCommandLinesTest {
         command: EsphomeCommand,
         executable: String? = "/usr/bin/esphome",
         device: String? = null,
+        stateReporting: StateReporting = StateReporting.DEFAULT,
+        extraArgs: String? = null,
+        cacheDir: File? = null,
     ) = EsphomeCommandLines.build(
         backend, command, config, executable, EsphomeRunOptions.DEFAULT_DOCKER_IMAGE, device,
+        stateReporting = stateReporting, extraArgs = extraArgs, cacheDir = cacheDir,
     ).commandLineString
 
     @Test
@@ -45,6 +49,36 @@ class EsphomeCommandLinesTest {
             "docker run --rm -v /home/me/devices:/config -w /config " +
                 "ghcr.io/esphome/esphome:latest compile living_room.yaml",
             cmd(EsphomeBackend.DOCKER, EsphomeCommand.COMPILE),
+        )
+    }
+
+    @Test
+    fun `docker adds a cache mount when given`() {
+        assertEquals(
+            "docker run --rm -v /home/me/devices:/config -v /home/me/.cache/esphome:/cache " +
+                "-w /config ghcr.io/esphome/esphome:latest compile living_room.yaml",
+            cmd(EsphomeBackend.DOCKER, EsphomeCommand.COMPILE, cacheDir = File("/home/me/.cache/esphome")),
+        )
+    }
+
+    @Test
+    fun `state reporting flag applies only to logs and run`() {
+        assertEquals(
+            "/usr/bin/esphome logs /home/me/devices/living_room.yaml --no-states",
+            cmd(EsphomeBackend.LOCAL, EsphomeCommand.LOGS, stateReporting = StateReporting.OFF),
+        )
+        // compile doesn't stream logs, so the flag is dropped.
+        assertEquals(
+            "/usr/bin/esphome compile /home/me/devices/living_room.yaml",
+            cmd(EsphomeBackend.LOCAL, EsphomeCommand.COMPILE, stateReporting = StateReporting.OFF),
+        )
+    }
+
+    @Test
+    fun `extra args are appended after the config file`() {
+        assertEquals(
+            "/usr/bin/esphome compile /home/me/devices/living_room.yaml -s name value --only-generate",
+            cmd(EsphomeBackend.LOCAL, EsphomeCommand.COMPILE, extraArgs = "-s name value --only-generate"),
         )
     }
 }

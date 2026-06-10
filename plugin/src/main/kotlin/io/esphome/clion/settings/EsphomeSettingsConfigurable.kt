@@ -5,8 +5,11 @@ import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.options.BoundConfigurable
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
+import com.intellij.ui.SimpleListCellRenderer
 import com.intellij.ui.dsl.builder.AlignX
+import com.intellij.ui.dsl.builder.bindItem
 import com.intellij.ui.dsl.builder.bindText
+import com.intellij.ui.dsl.builder.columns
 import com.intellij.ui.dsl.builder.panel
 
 /** Settings → Tools → ESPHome. */
@@ -21,6 +24,29 @@ class EsphomeSettingsConfigurable : BoundConfigurable("ESPHome") {
                 )
                 .align(AlignX.FILL)
         }.rowComment("Leave blank to auto-detect <code>esphome</code> from PATH. Used for config validation.")
+
+        group("Run configuration defaults") {
+            row("Default backend:") {
+                comboBox(listOf(BACKEND_LOCAL, BACKEND_DOCKER))
+                    .applyToComponent {
+                        renderer = SimpleListCellRenderer.create("") {
+                            if (it == BACKEND_DOCKER) "Docker" else "Local esphome"
+                        }
+                    }
+                    .bindItem(
+                        { EsphomeSettings.getInstance().state.defaultBackend ?: BACKEND_LOCAL },
+                        { EsphomeSettings.getInstance().state.defaultBackend = it ?: BACKEND_LOCAL },
+                    )
+            }
+            row("Docker image:") {
+                textField()
+                    .bindText(
+                        { EsphomeSettings.getInstance().state.dockerImage ?: EsphomeSettings.DEFAULT_DOCKER_IMAGE },
+                        { EsphomeSettings.getInstance().state.dockerImage = it.trim() },
+                    )
+                    .columns(40)
+            }.rowComment("Image new Docker run configurations start with.")
+        }
     }
 
     /**
@@ -40,5 +66,10 @@ class EsphomeSettingsConfigurable : BoundConfigurable("ESPHome") {
             FileChooser.chooseFile(descriptor, null, null)?.let { field.text = it.presentableUrl }
         }
         return field
+    }
+
+    private companion object {
+        const val BACKEND_LOCAL = "local"
+        const val BACKEND_DOCKER = "docker"
     }
 }
