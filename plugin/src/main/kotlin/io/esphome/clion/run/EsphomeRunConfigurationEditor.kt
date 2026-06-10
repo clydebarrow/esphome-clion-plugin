@@ -23,13 +23,13 @@ class EsphomeRunConfigurationEditor : SettingsEditor<EsphomeRunConfiguration>() 
         }
     }
     private val commandCombo = ComboBox(EsphomeCommand.entries.toTypedArray()).apply {
-        renderer = SimpleListCellRenderer.create("") { it.display }
+        renderer = SimpleListCellRenderer.create { label, value, _ -> label.text = value?.display.orEmpty() }
     }
     private val backendCombo = ComboBox(EsphomeBackend.entries.toTypedArray()).apply {
-        renderer = SimpleListCellRenderer.create("") { it.display }
+        renderer = SimpleListCellRenderer.create { label, value, _ -> label.text = value?.display.orEmpty() }
     }
     private val statesCombo = ComboBox(StateReporting.entries.toTypedArray()).apply {
-        renderer = SimpleListCellRenderer.create("") { it.display }
+        renderer = SimpleListCellRenderer.create { label, value, _ -> label.text = value?.display.orEmpty() }
     }
     private val dockerImageField = JBTextField()
     private val deviceField = JBTextField()
