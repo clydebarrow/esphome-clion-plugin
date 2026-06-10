@@ -20,6 +20,8 @@ release.
 - **Settings** for the default backend and Docker image new run configs use.
 - **State reporting** (`--states` / `--no-states`) for `run`/`logs`, and a
   free-form **extra arguments** field.
+- Per-run **"Emulate a terminal"** option (off by default) for in-place
+  compile/OTA progress; leave it off for serial upload/logs.
 
 ## [0.8.0]
 

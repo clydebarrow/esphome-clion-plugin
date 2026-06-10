@@ -6,6 +6,7 @@ import com.intellij.openapi.options.SettingsEditor
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
 import com.intellij.ui.SimpleListCellRenderer
+import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBTextField
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.panel
@@ -33,6 +34,7 @@ class EsphomeRunConfigurationEditor : SettingsEditor<EsphomeRunConfiguration>() 
     private val dockerImageField = JBTextField()
     private val deviceField = JBTextField()
     private val extraArgsField = JBTextField()
+    private val emulateTerminalBox = JBCheckBox("Emulate a terminal (in-place progress; not for serial)")
 
     override fun resetEditorFrom(s: EsphomeRunConfiguration) {
         configField.text = s.configPath.orEmpty()
@@ -42,6 +44,7 @@ class EsphomeRunConfigurationEditor : SettingsEditor<EsphomeRunConfiguration>() 
         dockerImageField.text = s.dockerImage
         deviceField.text = s.device.orEmpty()
         extraArgsField.text = s.extraArgs.orEmpty()
+        emulateTerminalBox.isSelected = s.emulateTerminal
     }
 
     override fun applyEditorTo(s: EsphomeRunConfiguration) {
@@ -52,6 +55,7 @@ class EsphomeRunConfigurationEditor : SettingsEditor<EsphomeRunConfiguration>() 
         s.dockerImage = dockerImageField.text.trim()
         s.device = deviceField.text.trim()
         s.extraArgs = extraArgsField.text.trim()
+        s.emulateTerminal = emulateTerminalBox.isSelected
     }
 
     override fun createEditor(): JComponent = panel {
@@ -66,5 +70,7 @@ class EsphomeRunConfigurationEditor : SettingsEditor<EsphomeRunConfiguration>() 
             .rowComment("--states / --no-states for run and logs.")
         row("Extra arguments:") { cell(extraArgsField).align(AlignX.FILL) }
             .rowComment("Appended after the config file, e.g. <code>-s name value</code> or <code>--only-generate</code>.")
+        row { cell(emulateTerminalBox) }
+            .rowComment("Smoother compile/OTA progress. Leave off for serial upload/logs.")
     }
 }

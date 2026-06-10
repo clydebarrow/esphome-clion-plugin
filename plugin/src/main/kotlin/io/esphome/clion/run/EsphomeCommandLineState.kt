@@ -20,10 +20,12 @@ class EsphomeCommandLineState(
 ) : CommandLineState(environment) {
 
     override fun startProcess(): ProcessHandler {
-        // Run under a pseudo-terminal: otherwise ESPHome/PlatformIO see no TTY
-        // and print compile/upload progress as separate scrolling lines instead
-        // of overwriting one line with `\r`, which the console renders in place.
-        val commandLine = PtyCommandLine(buildCommandLine()).withConsoleMode(false)
+        val base = buildCommandLine()
+        // Optionally run under a pseudo-terminal: ESPHome/PlatformIO then think
+        // they have a TTY and overwrite one progress line with `\r` (rendered in
+        // place) instead of scrolling. It suits OTA but interferes with serial
+        // upload/logs, so it's opt-in per run configuration.
+        val commandLine = if (configuration.emulateTerminal) PtyCommandLine(base).withConsoleMode(false) else base
         val handler = KillableColoredProcessHandler(commandLine)
         ProcessTerminatedListener.attach(handler)
         return handler

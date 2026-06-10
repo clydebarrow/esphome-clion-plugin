@@ -30,6 +30,13 @@ class EsphomeRunOptions : RunConfigurationOptions() {
     /** Extra arguments appended after the config file (e.g. `-s name value`). */
     var extraArgs: String? by string("")
 
+    /**
+     * Run under a pseudo-terminal so progress updates in place instead of
+     * scrolling. Off by default: it suits OTA, but a PTY interferes with serial
+     * upload/logs (buffered/suppressed output, empty serial `logs`).
+     */
+    var emulateTerminal: Boolean by property(false)
+
     companion object {
         val DEFAULT_DOCKER_IMAGE: String get() = EsphomeSettings.DEFAULT_DOCKER_IMAGE
     }

@@ -52,6 +52,10 @@ class EsphomeRunConfiguration(
         get() = options.extraArgs
         set(value) { options.extraArgs = value }
 
+    var emulateTerminal: Boolean
+        get() = options.emulateTerminal
+        set(value) { options.emulateTerminal = value }
+
     override fun getConfigurationEditor(): SettingsEditor<out RunConfigurationBase<*>> =
         EsphomeRunConfigurationEditor()
 
