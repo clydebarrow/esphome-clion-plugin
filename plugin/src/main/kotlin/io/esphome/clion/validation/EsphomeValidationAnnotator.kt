@@ -46,6 +46,7 @@ class EsphomeValidationAnnotator : ExternalAnnotator<EsphomeValidationAnnotator.
     data class Info(
         val targetFile: VirtualFile,
         val targetPath: String,
+        val configFile: VirtualFile,
         val configPath: String,
     )
 
@@ -60,7 +61,7 @@ class EsphomeValidationAnnotator : ExternalAnnotator<EsphomeValidationAnnotator.
             // a fragment compiles only inside a device — validate the root that includes it
             includingRoot(file.project, virtualFile) ?: return null
         }
-        return Info(virtualFile, virtualFile.path, configFile.path)
+        return Info(virtualFile, virtualFile.path, configFile, configFile.path)
     }
 
     /**
@@ -86,12 +87,21 @@ class EsphomeValidationAnnotator : ExternalAnnotator<EsphomeValidationAnnotator.
         // default backend from the Run-configuration defaults.
         val backend = EsphomeBackend.of(settings.state.defaultBackend)
         val executable = EsphomeExecutables.forBackend(backend)
-        // LOCAL/VENV need a host executable; DOCKER provides its own in the image.
-        if (backend != EsphomeBackend.DOCKER && executable == null) {
-            warnExecutableMissingOnce(backend)
+        // LOCAL/VENV need a host esphome; DOCKER needs the docker binary (it
+        // provides esphome in the image). If the backend can't run, say why once
+        // rather than failing silently with empty annotations.
+        val unavailable = when (backend) {
+            EsphomeBackend.DOCKER -> EsphomeCommandLines.findDocker() == null
+            else -> executable == null
+        }
+        if (unavailable) {
+            warnBackendUnavailableOnce(backend)
             return emptyList()
         }
+        // `esphome config` reads from disk: flush the open file and, for an
+        // included fragment, the device root it actually runs against.
         flushUnsavedChanges(info.targetFile)
+        if (info.configFile != info.targetFile) flushUnsavedChanges(info.configFile)
         val command = EsphomeCommandLines.buildConfig(
             backend = backend,
             configFile = File(info.configPath),
@@ -150,19 +160,28 @@ class EsphomeValidationAnnotator : ExternalAnnotator<EsphomeValidationAnnotator.
         }
     }
 
-    /** Surfaces the most common failure mode (no esphome for the backend) once per session. */
-    private fun warnExecutableMissingOnce(backend: EsphomeBackend) {
-        thisLogger().warn("No esphome for the $backend backend; set it in Settings | Tools | ESPHome.")
-        if (!executableWarningShown.compareAndSet(false, true)) return
-        val detail = when (backend) {
+    /**
+     * Explains, once per session, why the chosen validation backend can't run —
+     * with a title and remedy specific to the backend (missing esphome,
+     * un-provisioned venv, or no docker) so the action needed is obvious.
+     */
+    private fun warnBackendUnavailableOnce(backend: EsphomeBackend) {
+        val (title, detail) = when (backend) {
             EsphomeBackend.VENV ->
-                "The managed venv isn't set up. Run \"Set up / update venv\" in Settings | Tools | ESPHome, or change the default backend."
+                "ESPHome venv not set up" to
+                    "Run \"Set up / update venv\" in Settings | Tools | ESPHome, or change the default backend."
+            EsphomeBackend.DOCKER ->
+                "Docker not found" to
+                    "Install Docker (or start Docker Desktop), or change the default backend in Settings | Tools | ESPHome."
             else ->
-                "Set the esphome path in Settings | Tools | ESPHome, or add it to PATH."
+                "ESPHome executable not found" to
+                    "Set the esphome path in Settings | Tools | ESPHome, or add it to PATH."
         }
+        thisLogger().warn("$title; config validation disabled for the $backend backend.")
+        if (!executableWarningShown.compareAndSet(false, true)) return
         NotificationGroupManager.getInstance()
             .getNotificationGroup("ESPHome")
-            .createNotification("ESPHome executable not found", "Config validation is disabled. $detail", NotificationType.WARNING)
+            .createNotification(title, "Config validation is disabled. $detail", NotificationType.WARNING)
             .notify(null)
     }
 
