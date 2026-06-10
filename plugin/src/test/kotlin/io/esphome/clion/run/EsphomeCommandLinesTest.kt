@@ -105,4 +105,51 @@ class EsphomeCommandLinesTest {
             cmd(EsphomeBackend.LOCAL, EsphomeCommand.COMPILE, extraArgs = "-s name value --only-generate"),
         )
     }
+
+    // --- buildConfig: validation runs `esphome config` on the same backend as a run ---
+
+    @Test
+    fun `config validation on local runs esphome config on the file`() {
+        assertEquals(
+            "/usr/bin/esphome config /home/me/devices/living_room.yaml",
+            EsphomeCommandLines.buildConfig(
+                EsphomeBackend.LOCAL, config, "/usr/bin/esphome", EsphomeRunOptions.DEFAULT_DOCKER_IMAGE,
+            ).commandLineString,
+        )
+    }
+
+    @Test
+    fun `config validation on venv uses the venv esphome`() {
+        assertEquals(
+            "/venv/bin/esphome config /home/me/devices/living_room.yaml",
+            EsphomeCommandLines.buildConfig(
+                EsphomeBackend.VENV, config, "/venv/bin/esphome", EsphomeRunOptions.DEFAULT_DOCKER_IMAGE,
+            ).commandLineString,
+        )
+    }
+
+    @Test
+    fun `config validation on docker mounts the dir and runs config on the basename`() {
+        assertEquals(
+            "docker run --rm -v /home/me/devices:/config -w /config " +
+                "ghcr.io/esphome/esphome:latest config living_room.yaml",
+            EsphomeCommandLines.buildConfig(
+                EsphomeBackend.DOCKER, config, executable = null,
+                dockerImage = EsphomeRunOptions.DEFAULT_DOCKER_IMAGE,
+            ).commandLineString,
+        )
+    }
+
+    @Test
+    fun `config validation on docker adds the cache mount when given`() {
+        assertEquals(
+            "docker run --rm -v /home/me/devices:/config -v /home/me/.cache/esphome:/cache " +
+                "-w /config ghcr.io/esphome/esphome:latest config living_room.yaml",
+            EsphomeCommandLines.buildConfig(
+                EsphomeBackend.DOCKER, config, executable = null,
+                dockerImage = EsphomeRunOptions.DEFAULT_DOCKER_IMAGE,
+                cacheDir = File("/home/me/.cache/esphome"),
+            ).commandLineString,
+        )
+    }
 }

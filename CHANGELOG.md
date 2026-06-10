@@ -7,6 +7,12 @@ release.
 
 ## [Unreleased]
 
+### Changed
+
+- Config validation now runs `esphome config` on the **same backend** as a run
+  (the default backend: Local / managed venv / Docker), so the editor's errors
+  come from the same ESPHome you build with — no separate executable to wire up.
+
 ## [0.9.0]
 
 ### Added
