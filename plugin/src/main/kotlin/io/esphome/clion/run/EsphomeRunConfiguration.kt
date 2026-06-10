@@ -61,7 +61,12 @@ class EsphomeRunConfiguration(
                         "esphome executable not found. Set it in Settings | Tools | ESPHome, or use the Docker backend.",
                     )
                 }
-            EsphomeBackend.DOCKER ->
+            EsphomeBackend.DOCKER -> {
+                if (EsphomeCommandLines.findDocker() == null) {
+                    throw RuntimeConfigurationError(
+                        "docker not found on PATH. Install/start Docker, or use the Local backend.",
+                    )
+                }
                 if (command.usesDevice && device.isNullOrBlank() && SystemInfo.isMac) {
                     // Docker Desktop on macOS can't reach host USB serial ports.
                     throw RuntimeConfigurationWarning(
@@ -69,6 +74,7 @@ class EsphomeRunConfiguration(
                             "Use the Local backend, or set Device to an OTA host.",
                     )
                 }
+            }
         }
     }
 }
