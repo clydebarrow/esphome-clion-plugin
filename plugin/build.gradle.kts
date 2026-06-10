@@ -1,3 +1,4 @@
+import org.jetbrains.changelog.Changelog
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 import java.net.URI
 
@@ -10,6 +11,8 @@ import java.net.URI
 plugins {
     kotlin("jvm")
     id("org.jetbrains.intellij.platform") version "2.16.0"
+    // Renders CHANGELOG.md into the plugin's change-notes and the release body.
+    id("org.jetbrains.changelog") version "2.2.1"
 }
 
 // Plugin version: patched into plugin.xml's <version> and used in the
@@ -50,6 +53,18 @@ intellijPlatform {
     // running runIde sandbox).
     buildSearchableOptions = false
     pluginConfiguration {
+        // Bundle this version's CHANGELOG.md section as the plugin's change-notes
+        // (shown in the IDE's plugin manager and on the Marketplace).
+        changeNotes = provider {
+            with(changelog) {
+                renderItem(
+                    (getOrNull(version.get()) ?: getUnreleased())
+                        .withHeader(false)
+                        .withEmptySections(false),
+                    Changelog.OutputType.HTML,
+                )
+            }
+        }
         ideaVersion {
             // Compiled against CLion 2026.1 (build 261) on JDK 21. Bytecode 21
             // needs JBR 21, i.e. IDEs from 2024.2 (build 242) onward; the APIs
@@ -58,6 +73,28 @@ intellijPlatform {
             untilBuild = "261.*"
         }
     }
+
+    // Marketplace requires signed plugins. Keys come from CI secrets; when they
+    // are absent (local builds) signing/publishing simply isn't run.
+    signing {
+        certificateChain = providers.environmentVariable("CERTIFICATE_CHAIN")
+        privateKey = providers.environmentVariable("PRIVATE_KEY")
+        password = providers.environmentVariable("PRIVATE_KEY_PASSWORD")
+    }
+    publishing {
+        token = providers.environmentVariable("PUBLISH_TOKEN")
+        // Pre-release versions (e.g. 0.9.0-rc1) go to the `beta` Marketplace
+        // channel; clean semver goes to the default (stable) channel.
+        channels = providers.gradleProperty("pluginVersion").orElse("0.0.0")
+            .map { listOf(if ("-" in it) "beta" else "default") }
+    }
+}
+
+changelog {
+    // CHANGELOG.md lives at the repo root, not in this (the plugin) module.
+    path = rootProject.file("CHANGELOG.md").absolutePath
+    version = providers.gradleProperty("pluginVersion").orElse("0.1.0")
+    repositoryUrl = "https://github.com/clydebarrow/esphome-clion-plugin"
 }
 
 kotlin {
