@@ -27,6 +27,9 @@ class EsphomeRunOptions : RunConfigurationOptions() {
     /** Whether `logs`/`run` subscribe to entity states (`--states`/`--no-states`). */
     var stateReporting: String? by string(StateReporting.DEFAULT.id)
 
+    /** Reset the device before starting serial logs (`--reset`), for `logs`/`run`. */
+    var resetBeforeLogs: Boolean by property(false)
+
     /** Extra arguments appended after the config file (e.g. `-s name value`). */
     var extraArgs: String? by string("")
 

@@ -34,6 +34,7 @@ class EsphomeRunConfigurationEditor : SettingsEditor<EsphomeRunConfiguration>() 
     private val dockerImageField = JBTextField()
     private val deviceField = JBTextField()
     private val extraArgsField = JBTextField()
+    private val resetBeforeLogsBox = JBCheckBox("Reset device before starting logs")
     private val emulateTerminalBox = JBCheckBox("Emulate a terminal (in-place progress; not for serial)")
 
     override fun resetEditorFrom(s: EsphomeRunConfiguration) {
@@ -44,6 +45,7 @@ class EsphomeRunConfigurationEditor : SettingsEditor<EsphomeRunConfiguration>() 
         dockerImageField.text = s.dockerImage
         deviceField.text = s.device.orEmpty()
         extraArgsField.text = s.extraArgs.orEmpty()
+        resetBeforeLogsBox.isSelected = s.resetBeforeLogs
         emulateTerminalBox.isSelected = s.emulateTerminal
     }
 
@@ -55,6 +57,7 @@ class EsphomeRunConfigurationEditor : SettingsEditor<EsphomeRunConfiguration>() 
         s.dockerImage = dockerImageField.text.trim()
         s.device = deviceField.text.trim()
         s.extraArgs = extraArgsField.text.trim()
+        s.resetBeforeLogs = resetBeforeLogsBox.isSelected
         s.emulateTerminal = emulateTerminalBox.isSelected
     }
 
@@ -68,6 +71,8 @@ class EsphomeRunConfigurationEditor : SettingsEditor<EsphomeRunConfiguration>() 
             .rowComment("OTA host/IP or serial port for run/upload/logs. Blank = let ESPHome choose.")
         row("Show device states:") { cell(statesCombo) }
             .rowComment("--states / --no-states for run and logs.")
+        row { cell(resetBeforeLogsBox) }
+            .rowComment("Adds --reset so the board restarts when logs (or run) begin.")
         row("Extra arguments:") { cell(extraArgsField).align(AlignX.FILL) }
             .rowComment("Appended after the config file, e.g. <code>-s name value</code> or <code>--only-generate</code>.")
         row { cell(emulateTerminalBox) }

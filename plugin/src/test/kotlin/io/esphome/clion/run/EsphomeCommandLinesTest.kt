@@ -15,11 +15,12 @@ class EsphomeCommandLinesTest {
         executable: String? = "/usr/bin/esphome",
         device: String? = null,
         stateReporting: StateReporting = StateReporting.DEFAULT,
+        resetBeforeLogs: Boolean = false,
         extraArgs: String? = null,
         cacheDir: File? = null,
     ) = EsphomeCommandLines.build(
         backend, command, config, executable, EsphomeRunOptions.DEFAULT_DOCKER_IMAGE, device,
-        stateReporting = stateReporting, extraArgs = extraArgs, cacheDir = cacheDir,
+        stateReporting = stateReporting, resetBeforeLogs = resetBeforeLogs, extraArgs = extraArgs, cacheDir = cacheDir,
     ).commandLineString
 
     @Test
@@ -82,6 +83,18 @@ class EsphomeCommandLinesTest {
         assertEquals(
             "/usr/bin/esphome compile /home/me/devices/living_room.yaml",
             cmd(EsphomeBackend.LOCAL, EsphomeCommand.COMPILE, stateReporting = StateReporting.OFF),
+        )
+    }
+
+    @Test
+    fun `reset flag applies only to logs and run`() {
+        assertEquals(
+            "/usr/bin/esphome logs /home/me/devices/living_room.yaml --reset",
+            cmd(EsphomeBackend.LOCAL, EsphomeCommand.LOGS, resetBeforeLogs = true),
+        )
+        assertEquals(
+            "/usr/bin/esphome upload /home/me/devices/living_room.yaml",
+            cmd(EsphomeBackend.LOCAL, EsphomeCommand.UPLOAD, resetBeforeLogs = true),
         )
     }
 

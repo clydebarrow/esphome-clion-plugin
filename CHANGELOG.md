@@ -18,8 +18,9 @@ release.
   shared host cache at `/cache` (off by default; needs the directory shared with
   Docker Desktop).
 - **Settings** for the default backend and Docker image new run configs use.
-- **State reporting** (`--states` / `--no-states`) for `run`/`logs`, and a
-  free-form **extra arguments** field.
+- **State reporting** (`--states` / `--no-states`) and a **"Reset device before
+  logs"** option (`--reset`) for `run`/`logs`, and a free-form **extra
+  arguments** field.
 - Per-run **"Emulate a terminal"** option (off by default) for in-place
   compile/OTA progress; leave it off for serial upload/logs.
 

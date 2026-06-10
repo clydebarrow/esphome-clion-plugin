@@ -43,6 +43,7 @@ class EsphomeCommandLineState(
         dockerImage = configuration.dockerImage,
         device = configuration.device,
         stateReporting = configuration.stateReporting,
+        resetBeforeLogs = configuration.resetBeforeLogs,
         extraArgs = configuration.extraArgs,
         // Optional shared cache for Docker (off by default — needs the dir shared
         // with Docker Desktop; ESPHome otherwise caches into /config/.esphome).
@@ -63,6 +64,7 @@ object EsphomeCommandLines {
         device: String?,
         dockerExecutable: String = "docker",
         stateReporting: StateReporting = StateReporting.DEFAULT,
+        resetBeforeLogs: Boolean = false,
         extraArgs: String? = null,
         cacheDir: File? = null,
     ): GeneralCommandLine {
@@ -70,7 +72,10 @@ object EsphomeCommandLines {
         val trailing = buildList {
             device?.trim()?.takeIf { it.isNotEmpty() && command.usesDevice }
                 ?.let { addAll(listOf("--device", it)) }
-            if (command.streamsLogs) stateReporting.flag?.let(::add)
+            if (command.streamsLogs) {
+                stateReporting.flag?.let(::add)
+                if (resetBeforeLogs) add("--reset")
+            }
             addAll(ParametersListUtil.parse(extraArgs.orEmpty()))
         }
 

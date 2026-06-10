@@ -48,6 +48,10 @@ class EsphomeRunConfiguration(
         get() = StateReporting.of(options.stateReporting)
         set(value) { options.stateReporting = value.id }
 
+    var resetBeforeLogs: Boolean
+        get() = options.resetBeforeLogs
+        set(value) { options.resetBeforeLogs = value }
+
     var extraArgs: String?
         get() = options.extraArgs
         set(value) { options.extraArgs = value }
