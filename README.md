@@ -8,12 +8,19 @@ architecture and why this does **not** use a JSON Schema.
 
 ## Install
 
-Download the latest plugin zip from the
+From the **JetBrains Marketplace**: **Settings → Plugins → Marketplace**, search
+for **ESPHome**, install, and restart.
+
+Or from a release zip: download the latest from the
 [**Releases**](https://github.com/clydebarrow/esphome-clion-plugin/releases/latest)
-page (don't unzip it), then in your JetBrains IDE go to **Settings → Plugins → ⚙ → Install
-Plugin from Disk…**, select the zip, and restart. If validation is quiet, set
-your esphome binary under **Settings → Tools → ESPHome** (it's auto-detected from
-`PATH` otherwise). Open any config with a top-level `esphome:` key to activate it.
+page (don't unzip it), then **Settings → Plugins → ⚙ → Install Plugin from
+Disk…**, select the zip, and restart.
+
+Open any config with a top-level `esphome:` (or `packages:`) key to activate it.
+Set your esphome binary under **Settings → Tools → ESPHome** if it isn't on
+`PATH` — or use the Docker / managed-venv backends (see
+[Compiling, running & flashing](#compiling-running--flashing)) to avoid a local
+install.
 
 ## Modules
 
@@ -40,15 +47,46 @@ isn't on PATH).
 ## Features
 
 - **Completion** — top-level keys, nested component keys, platform list items
-  (`sensor: - platform: …`), `platform:` values, and `options` enums.
+  (`sensor: - platform: …`), `platform:` values, enum and boolean values,
+  `${substitution}` names, triggers (`on_*`), and actions in automation lists.
+  Works in package-based configs (top-level `packages:`, no `esphome:`).
+- **LVGL** — full `lvgl:` completion including the `widgets:` tree (widget types,
+  their properties, and nested widgets), driven by ESPHome's language schema.
+- **Navigation** — go-to / find-usages / rename for component ids and
+  substitutions; id-reference completion offers in-scope ids of the right type.
 - **Hover documentation** — field type/requiredness/default/range/units/values
   and a docs link, from the catalog (`DocumentationProvider`).
 - **Validation** — runs the real `esphome config` in the background
-  (`ExternalAnnotator`) and maps reported errors to the offending lines. The
-  executable is auto-detected from PATH or set in Settings → Tools → ESPHome.
+  (`ExternalAnnotator`) and maps reported errors to the offending lines.
+- **Compile, run & flash** — run configurations that invoke ESPHome (see below).
 - **Full catalog** — `vendorCatalog` downloads all component bodies for a pinned
   ESPHome release into generated resources; a small committed subset is the
   offline fallback.
+
+## Compiling, running & flashing
+
+Right-click a config (one with a top-level `esphome:` or `packages:`) and choose
+**Run**, or create an *ESPHome* run configuration manually. It runs an ESPHome
+command with output in the Run console (stop / re-run included).
+
+- **Command** — `compile`, `run` (compile + upload + logs), `upload`, `logs`,
+  or `clean`.
+- **Backend** — how ESPHome is run:
+  - **Local** — the `esphome` set in **Settings → Tools → ESPHome** (or found on
+    PATH). Full capability, including serial flashing.
+  - **Managed venv** — a plugin-managed Python venv. Set a version and click
+    **Set up / update venv** in Settings (blank = latest, `beta` = latest
+    pre-release, `dev` or a branch/tag = from git, `2025.7.0` = that release).
+    No global install, full serial support.
+  - **Docker** — the official `ghcr.io/esphome/esphome` image; great for compile
+    and OTA. **Serial flashing does not work in Docker on macOS** (the VM has no
+    USB passthrough) — use Local or the venv for that. An optional shared cache
+    (Settings) speeds up repeat compiles but needs the cache dir shared with
+    Docker Desktop.
+- **Options** — a `--device` (OTA host/IP or serial port), state reporting
+  (`--states`/`--no-states`), **Reset device before logs** (`--reset`), free-form
+  extra arguments, and **Emulate a terminal** (in-place progress for compile/OTA;
+  leave off for serial upload/logs).
 
 ## Toolchain & build target
 
@@ -84,6 +122,25 @@ The plugin version is taken from the tag (the leading `v` is stripped), so no
 manual version edit is needed. A tag with a pre-release suffix (e.g.
 `v0.7.0-rc1`) is published as a GitHub pre-release. Every push and pull request
 to `main` also runs the test suites via `.github/workflows/ci.yml`.
+
+The release body and the plugin's in-IDE change-notes come from
+[`CHANGELOG.md`](CHANGELOG.md) — keep the `[Unreleased]` section up to date and
+promote it to a version heading when tagging.
+
+**JetBrains Marketplace publishing** happens automatically on a tag when these
+repository secrets are set (otherwise the publish step is skipped and only the
+GitHub release is made):
+
+- `PUBLISH_TOKEN` — a Marketplace token (set manually).
+- `PRIVATE_KEY`, `CERTIFICATE_CHAIN`, `PRIVATE_KEY_PASSWORD` — the plugin-signing
+  key/cert. Generate and store them in one step:
+
+  ```bash
+  ./gradlew storeSigningSecrets -PsigningPassword=<password>
+  ```
+
+Clean-semver tags publish to the **stable** channel; pre-release tags publish to
+**beta**.
 
 ## License
 
