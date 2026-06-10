@@ -66,7 +66,13 @@ class EsphomeRunConfiguration(
             EsphomeBackend.LOCAL ->
                 if (EsphomeSettings.getInstance().resolveExecutable() == null) {
                     throw RuntimeConfigurationError(
-                        "esphome executable not found. Set it in Settings | Tools | ESPHome, or use the Docker backend.",
+                        "esphome executable not found. Set it in Settings | Tools | ESPHome, or use the venv/Docker backend.",
+                    )
+                }
+            EsphomeBackend.VENV ->
+                if (!EsphomeVenv.isProvisioned()) {
+                    throw RuntimeConfigurationError(
+                        "ESPHome venv not set up. Create it in Settings | Tools | ESPHome.",
                     )
                 }
             EsphomeBackend.DOCKER -> {

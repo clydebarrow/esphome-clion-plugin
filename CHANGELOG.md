@@ -11,9 +11,12 @@ release.
 
 - Run configurations to **compile / run / upload / logs / clean** an ESPHome
   config, with output in the Run console. Right-click a config to create one.
-- **Local** and **Docker** (`ghcr.io/esphome/esphome`) execution backends.
-- Docker backend mounts the config directory at `/config` and a persistent host
-  cache at `/cache`, so PlatformIO toolchains aren't re-downloaded each run.
+- **Local**, **managed venv**, and **Docker** (`ghcr.io/esphome/esphome`)
+  execution backends. The managed venv is created with one click in Settings and
+  pip-installs a chosen esphome version — no global install, full serial support.
+- Docker backend mounts the config directory at `/config`, with an optional
+  shared host cache at `/cache` (off by default; needs the directory shared with
+  Docker Desktop).
 - **Settings** for the default backend and Docker image new run configs use.
 - **State reporting** (`--states` / `--no-states`) for `run`/`logs`, and a
   free-form **extra arguments** field.

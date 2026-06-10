@@ -44,6 +44,17 @@ class EsphomeCommandLinesTest {
     }
 
     @Test
+    fun `venv backend runs the venv esphome like local`() {
+        assertEquals(
+            "/venv/bin/esphome compile /home/me/devices/living_room.yaml",
+            EsphomeCommandLines.build(
+                EsphomeBackend.VENV, EsphomeCommand.COMPILE, config, "/venv/bin/esphome",
+                EsphomeRunOptions.DEFAULT_DOCKER_IMAGE, null,
+            ).commandLineString,
+        )
+    }
+
+    @Test
     fun `docker mounts the config dir and runs on the basename`() {
         assertEquals(
             "docker run --rm -v /home/me/devices:/config -w /config " +

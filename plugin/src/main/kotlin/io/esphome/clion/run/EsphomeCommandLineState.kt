@@ -33,15 +33,20 @@ class EsphomeCommandLineState(
         backend = configuration.backend,
         command = configuration.command,
         configFile = File(configuration.configPath ?: error("No config file")),
-        executable = EsphomeSettings.getInstance().resolveExecutable(),
+        executable = when (configuration.backend) {
+            EsphomeBackend.VENV -> EsphomeVenv.esphome().takeIf { it.canExecute() }?.path
+            else -> EsphomeSettings.getInstance().resolveExecutable()
+        },
         dockerExecutable = EsphomeCommandLines.resolveDocker(),
         dockerImage = configuration.dockerImage,
         device = configuration.device,
         stateReporting = configuration.stateReporting,
         extraArgs = configuration.extraArgs,
-        // Persist PlatformIO toolchains across Docker runs instead of
-        // re-downloading them into each project's .esphome dir.
-        cacheDir = EsphomeSettings.getInstance().dockerCacheDir(),
+        // Optional shared cache for Docker (off by default — needs the dir shared
+        // with Docker Desktop; ESPHome otherwise caches into /config/.esphome).
+        cacheDir = EsphomeSettings.getInstance()
+            .takeIf { it.state.dockerCacheMount }
+            ?.dockerCacheDir(),
     )
 }
 
@@ -68,7 +73,8 @@ object EsphomeCommandLines {
         }
 
         val commandLine = when (backend) {
-            EsphomeBackend.LOCAL -> {
+            // Local and the managed venv differ only in which `esphome` runs.
+            EsphomeBackend.LOCAL, EsphomeBackend.VENV -> {
                 val exe = executable ?: error("esphome executable not found")
                 GeneralCommandLine(exe, command.id, configFile.path).withParams(trailing)
             }

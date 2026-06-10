@@ -58,6 +58,7 @@ enum class EsphomeCommand(val id: String, val display: String) {
 /** Execution backend for ESPHome commands. */
 enum class EsphomeBackend(val id: String, val display: String) {
     LOCAL("local", "Local esphome"),
+    VENV("venv", "Managed venv (pip esphome)"),
     DOCKER("docker", "Docker (ghcr.io/esphome/esphome)"),
     ;
 

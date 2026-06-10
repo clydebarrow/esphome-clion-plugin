@@ -26,6 +26,17 @@ class EsphomeSettings : SimplePersistentStateComponent<EsphomeSettings.State>(St
 
         /** Default image for the Docker backend. */
         var dockerImage: String? by string(DEFAULT_DOCKER_IMAGE)
+
+        /** esphome version to install in the managed venv; blank = latest. */
+        var esphomeVersion: String? by string("")
+
+        /**
+         * Mount a shared host cache at the Docker container's `/cache`. Off by
+         * default: it requires the cache directory to be shared with Docker
+         * Desktop, and ESPHome otherwise caches into the (already-mounted)
+         * config directory's `.esphome/`.
+         */
+        var dockerCacheMount: Boolean by property(false)
     }
 
     /**
