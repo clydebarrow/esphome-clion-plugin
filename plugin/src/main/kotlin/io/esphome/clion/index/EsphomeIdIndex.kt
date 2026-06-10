@@ -39,7 +39,7 @@ data class IdDeclaration(val offset: Int, val domain: String, val platform: Stri
 class EsphomeIdIndex : FileBasedIndexExtension<String, IdDeclaration>() {
 
     override fun getName(): ID<String, IdDeclaration> = NAME
-    override fun getVersion(): Int = 1
+    override fun getVersion(): Int = 2
     override fun dependsOnFileContent(): Boolean = true
     override fun getKeyDescriptor(): KeyDescriptor<String> = EnumeratorStringDescriptor.INSTANCE
     override fun getValueExternalizer(): DataExternalizer<IdDeclaration> = Externalizer
@@ -52,6 +52,9 @@ class EsphomeIdIndex : FileBasedIndexExtension<String, IdDeclaration>() {
         for (keyValue in PsiTreeUtil.findChildrenOfType(yaml, YAMLKeyValue::class.java)) {
             if (keyValue.keyText != ID_KEY) continue
             val value = keyValue.value as? YAMLScalar ?: continue
+            // `id: !extend X` / `id: !remove X` reference an existing declaration
+            // in a package — not a new one — so they aren't indexed as declarations.
+            if (EsphomeYaml.isMergeTaggedId(value)) continue
             // Templated names (`id: ${prefix}_relay`) are indexed raw and expanded
             // at query time (the index is per-file, so it can't resolve them here).
             val name = value.textValue

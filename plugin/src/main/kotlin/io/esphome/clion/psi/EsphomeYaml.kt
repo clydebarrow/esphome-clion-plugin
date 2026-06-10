@@ -6,7 +6,9 @@ import org.jetbrains.yaml.psi.YAMLDocument
 import org.jetbrains.yaml.psi.YAMLFile
 import org.jetbrains.yaml.psi.YAMLKeyValue
 import org.jetbrains.yaml.psi.YAMLMapping
+import org.jetbrains.yaml.psi.YAMLScalar
 import org.jetbrains.yaml.psi.YAMLSequenceItem
+import org.jetbrains.yaml.psi.YAMLValue
 
 /**
  * YAML PSI helpers for locating where the caret sits within an ESPHome config,
@@ -27,6 +29,30 @@ object EsphomeYaml {
 
     /** The discriminator key inside a platform list item (`- platform: dht`). */
     const val PLATFORM_KEY = "platform"
+
+    /** Key whose value names a component instance (`id: my_sensor`). */
+    const val ID_KEY = "id"
+
+    /**
+     * The normalised YAML tag on [value] (e.g. `!extend` → "extend"), or null
+     * when it carries no explicit tag.
+     */
+    fun tagName(value: YAMLValue): String? = value.tag?.text?.trim()?.removePrefix("!")
+
+    /**
+     * Whether [scalar] is the value of an `id:` that *references* an existing
+     * declaration through a package-merge tag — `!extend` (modify it) or
+     * `!remove` (delete it) — rather than declaring a new id. Such an `id:`
+     * resolves to the original declaration (in the package) and must not itself
+     * be indexed as a declaration.
+     */
+    fun isMergeTaggedId(scalar: YAMLScalar): Boolean {
+        val keyValue = scalar.parent as? YAMLKeyValue ?: return false
+        if (keyValue.keyText != ID_KEY || keyValue.value !== scalar) return false
+        return tagName(scalar) in MERGE_TAGS
+    }
+
+    private val MERGE_TAGS = setOf("extend", "remove")
 
     /**
      * True if [file] is a config ESPHome can compile standalone — it has a

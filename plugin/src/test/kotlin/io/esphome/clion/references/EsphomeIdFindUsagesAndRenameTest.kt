@@ -112,6 +112,23 @@ class EsphomeIdFindUsagesAndRenameTest : BasePlatformTestCase() {
         assertEquals("device.yaml", usages.single().file!!.name)
     }
 
+    fun `test find usages from a declaration finds an extend override`() {
+        myFixture.addFileToProject(
+            "p/gyro.yaml",
+            "binary_sensor:\n  - platform: template\n    id: free_fall_id\n    name: Free Fall\n",
+        )
+        myFixture.addFileToProject(
+            "p/device.yaml",
+            "esphome:\n  name: x\npackages:\n  gyro: !include gyro.yaml\n" +
+                "binary_sensor:\n  - id: !extend free_fall_id\n    filters:\n      - delayed_on: 10ms\n",
+        )
+        // search from the declaration in the package; the override is the usage
+        myFixture.configureFromExistingVirtualFile(myFixture.findFileInTempDir("p/gyro.yaml"))
+        val usages = myFixture.findUsages(declarationScalar("free_fall_id"))
+        assertEquals(1, usages.size)
+        assertEquals("device.yaml", usages.single().file!!.name)
+    }
+
     fun `test rename from the declaration updates declaration and references`() {
         myFixture.configureByText("device.yaml", deviceText)
         val offset = myFixture.file.text.indexOf("id: relay_out") + "id: ".length
