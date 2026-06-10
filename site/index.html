@@ -141,6 +141,7 @@
       <ul class="ticks">
         <li>Background <code>ExternalAnnotator</code>, no editor lag</li>
         <li>Errors mapped to precise line/column</li>
+        <li>Runs on the <em>same</em> backend as your runs (local / venv / Docker)</li>
         <li>Unresolved-id &amp; unresolved-substitution inspections</li>
       </ul>
     </div>
@@ -230,8 +231,8 @@ The interval to check the sensor.
       <p>From <strong>Settings → Plugins → Marketplace</strong>, search <em>ESPHome</em>, install and restart. <span class="muted">(Or grab the zip from <a href="https://github.com/clydebarrow/esphome-clion-plugin/releases/latest">Releases</a> → Install Plugin from Disk.)</span></p>
     </li>
     <li>
-      <h3>Point it at ESPHome</h3>
-      <p>Validation runs the real <code>esphome config</code>, so set your <code>esphome</code> under <strong>Settings → Tools → ESPHome</strong> (auto-detected from <code>PATH</code>). No global install? Set up the managed venv and point that setting at its <code>esphome</code>. Compile/run can also use the Docker backend.</p>
+      <h3>Pick a backend</h3>
+      <p>Under <strong>Settings → Tools → ESPHome</strong>, choose how ESPHome runs: <em>Local</em> (your <code>PATH</code> esphome), a <em>managed venv</em>, or <em>Docker</em>. Both runs <strong>and</strong> background validation use it, so there's nothing else to wire up.</p>
     </li>
     <li>
       <h3>Open a config &amp; go</h3>

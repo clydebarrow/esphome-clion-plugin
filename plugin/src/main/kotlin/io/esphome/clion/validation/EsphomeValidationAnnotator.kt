@@ -1,7 +1,6 @@
 package io.esphome.clion.validation
 
 import com.intellij.execution.ExecutionException
-import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.process.CapturingProcessHandler
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
@@ -19,10 +18,13 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import io.esphome.clion.psi.EsphomeYaml
+import io.esphome.clion.run.EsphomeBackend
+import io.esphome.clion.run.EsphomeCommandLines
+import io.esphome.clion.run.EsphomeExecutables
 import io.esphome.clion.services.EsphomeIncludeGraph
 import io.esphome.clion.settings.EsphomeSettings
 import org.jetbrains.yaml.psi.YAMLFile
-import java.nio.charset.StandardCharsets
+import java.io.File
 
 /**
  * Validates ESPHome configs by running the real `esphome config <file>` and
@@ -45,7 +47,6 @@ class EsphomeValidationAnnotator : ExternalAnnotator<EsphomeValidationAnnotator.
         val targetFile: VirtualFile,
         val targetPath: String,
         val configPath: String,
-        val workDir: String?,
     )
 
     override fun collectInformation(file: PsiFile): Info? {
@@ -59,7 +60,7 @@ class EsphomeValidationAnnotator : ExternalAnnotator<EsphomeValidationAnnotator.
             // a fragment compiles only inside a device — validate the root that includes it
             includingRoot(file.project, virtualFile) ?: return null
         }
-        return Info(virtualFile, virtualFile.path, configFile.path, configFile.parent?.path)
+        return Info(virtualFile, virtualFile.path, configFile.path)
     }
 
     /**
@@ -79,15 +80,26 @@ class EsphomeValidationAnnotator : ExternalAnnotator<EsphomeValidationAnnotator.
     }
 
     override fun doAnnotate(info: Info): List<EsphomeDiagnostic> {
-        val executable = EsphomeSettings.getInstance().resolveExecutable()
-        if (executable == null) {
-            warnExecutableMissingOnce()
+        val settings = EsphomeSettings.getInstance()
+        // Validate with the same backend (and esphome) a run would use, so the
+        // editor's verdict matches what the user actually builds with. Follows the
+        // default backend from the Run-configuration defaults.
+        val backend = EsphomeBackend.of(settings.state.defaultBackend)
+        val executable = EsphomeExecutables.forBackend(backend)
+        // LOCAL/VENV need a host executable; DOCKER provides its own in the image.
+        if (backend != EsphomeBackend.DOCKER && executable == null) {
+            warnExecutableMissingOnce(backend)
             return emptyList()
         }
         flushUnsavedChanges(info.targetFile)
-        val command = GeneralCommandLine(executable, "config", info.configPath)
-            .withCharset(StandardCharsets.UTF_8)
-        info.workDir?.let(command::withWorkDirectory)
+        val command = EsphomeCommandLines.buildConfig(
+            backend = backend,
+            configFile = File(info.configPath),
+            executable = executable,
+            dockerImage = settings.state.dockerImage ?: EsphomeSettings.DEFAULT_DOCKER_IMAGE,
+            dockerExecutable = EsphomeCommandLines.resolveDocker(),
+            cacheDir = settings.takeIf { it.state.dockerCacheMount }?.dockerCacheDir(),
+        )
 
         return try {
             val output = CapturingProcessHandler(command).runProcess(TIMEOUT_MS)
@@ -109,7 +121,7 @@ class EsphomeValidationAnnotator : ExternalAnnotator<EsphomeValidationAnnotator.
             )
             diagnostics
         } catch (e: ExecutionException) {
-            thisLogger().warn("Could not run '$executable config'", e)
+            thisLogger().warn("Could not run '${command.commandLineString}'", e)
             emptyList()
         }
     }
@@ -138,17 +150,19 @@ class EsphomeValidationAnnotator : ExternalAnnotator<EsphomeValidationAnnotator.
         }
     }
 
-    /** Surfaces the most common failure mode (esphome not on PATH) once per session. */
-    private fun warnExecutableMissingOnce() {
-        thisLogger().warn("ESPHome executable not found; set it in Settings | Tools | ESPHome.")
+    /** Surfaces the most common failure mode (no esphome for the backend) once per session. */
+    private fun warnExecutableMissingOnce(backend: EsphomeBackend) {
+        thisLogger().warn("No esphome for the $backend backend; set it in Settings | Tools | ESPHome.")
         if (!executableWarningShown.compareAndSet(false, true)) return
+        val detail = when (backend) {
+            EsphomeBackend.VENV ->
+                "The managed venv isn't set up. Run \"Set up / update venv\" in Settings | Tools | ESPHome, or change the default backend."
+            else ->
+                "Set the esphome path in Settings | Tools | ESPHome, or add it to PATH."
+        }
         NotificationGroupManager.getInstance()
             .getNotificationGroup("ESPHome")
-            .createNotification(
-                "ESPHome executable not found",
-                "Config validation is disabled. Set the esphome path in Settings | Tools | ESPHome, or add it to PATH.",
-                NotificationType.WARNING,
-            )
+            .createNotification("ESPHome executable not found", "Config validation is disabled. $detail", NotificationType.WARNING)
             .notify(null)
     }
 

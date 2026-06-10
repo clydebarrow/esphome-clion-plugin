@@ -22,12 +22,12 @@ Disk…**, select the zip, and restart.
 
 Open any config with a top-level `esphome:` (or `packages:`) key to activate it.
 Completion, hover docs and navigation work with no external tool. **Validation**
-runs the real `esphome config`, so it needs an esphome executable: set it under
-**Settings → Tools → ESPHome** (auto-detected from `PATH` otherwise). The
-Docker / managed-venv backends (see
-[Compiling, running & flashing](#compiling-running--flashing)) cover *compile and
-run* — to also get validation without a global install, set up the managed venv
-and point **Settings → Tools → ESPHome** at its `esphome`.
+runs the real `esphome config` using the same **backend** as a run (the default
+backend under **Settings → Tools → ESPHome**), so the editor's verdict matches
+what you'd build: the configured/`PATH` esphome for *Local*, the managed venv's
+esphome for *Managed venv*, or the image for *Docker* (see
+[Compiling, running & flashing](#compiling-running--flashing)). Set up whichever
+backend you prefer and both validation and runs follow it — no separate wiring.
 
 ## Modules
 
@@ -94,6 +94,10 @@ command with output in the Run console (stop / re-run included).
   (`--states`/`--no-states`), **Reset device before logs** (`--reset`), free-form
   extra arguments, and **Emulate a terminal** (in-place progress for compile/OTA;
   leave off for serial upload/logs).
+
+The **default backend** (in the same settings page) is what new run
+configurations start from — and what background validation uses, so the editor's
+errors come from the very same ESPHome you build with.
 
 ## Toolchain & build target
 
