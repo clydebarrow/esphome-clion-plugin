@@ -82,6 +82,19 @@ jobs:
           test -f "$ZIP" || { echo "Expected $ZIP not found"; ls -l plugin/build/distributions; exit 1; }
           echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
 
+      # The release body: this version's CHANGELOG.md section, falling back to
+      # the [Unreleased] section (and to auto-generated notes if neither exists).
+      - name: Extract release notes
+        run: |
+          awk -v ver="${{ steps.version.outputs.version }}" '
+            /^## \[/ {
+              if (printing) exit
+              if (index($0, "[" ver "]") || (!found && index($0, "[Unreleased]"))) { printing=1; found=1; next }
+            }
+            printing { print }
+          ' CHANGELOG.md > release-notes.md
+          [ -s release-notes.md ] || echo "See the plugin change notes." > release-notes.md
+
       # Manual runs: keep the build as an artifact, don't publish a release.
       - name: Upload build artifact
         if: github.event_name == 'workflow_dispatch'
@@ -99,4 +112,19 @@ jobs:
         with:
           files: ${{ steps.dist.outputs.zip }}
           prerelease: ${{ steps.version.outputs.prerelease }}
+          body_path: release-notes.md
+          append_body: true
           generate_release_notes: true
+
+      # Publish to the JetBrains Marketplace — only when the signing/publish
+      # secrets are configured. Pre-release versions go to the `beta` channel
+      # (handled in plugin/build.gradle.kts). Requires PUBLISH_TOKEN (Marketplace)
+      # and the plugin-signing CERTIFICATE_CHAIN / PRIVATE_KEY / PRIVATE_KEY_PASSWORD.
+      - name: Publish to JetBrains Marketplace
+        if: github.event_name == 'push' && env.PUBLISH_TOKEN != ''
+        env:
+          PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
+          CERTIFICATE_CHAIN: ${{ secrets.CERTIFICATE_CHAIN }}
+          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+          PRIVATE_KEY_PASSWORD: ${{ secrets.PRIVATE_KEY_PASSWORD }}
+        run: ./gradlew :plugin:publishPlugin -PpluginVersion=${{ steps.version.outputs.version }} --stacktrace
