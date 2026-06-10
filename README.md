@@ -2,8 +2,12 @@
 
 JetBrains IDE plugin for ESPHome YAML device configs: completion, hover
 documentation, validation, and navigation. Works in CLion, IntelliJ IDEA,
-PyCharm, and other compatible IDEs (2024.2+). See
-[`docs/esphome-data-sources.md`](docs/esphome-data-sources.md) for the data
+PyCharm, and other compatible IDEs (2024.2+).
+
+🌐 **[Showcase &amp; user guide →](https://clydebarrow.github.io/esphome-clion-plugin/)** ·
+🧩 **[Install from the JetBrains Marketplace →](https://plugins.jetbrains.com/plugin/32186-esphome)**
+
+See [`docs/esphome-data-sources.md`](docs/esphome-data-sources.md) for the data
 architecture and why this does **not** use a JSON Schema.
 
 ## Install
@@ -17,10 +21,13 @@ page (don't unzip it), then **Settings → Plugins → ⚙ → Install Plugin fr
 Disk…**, select the zip, and restart.
 
 Open any config with a top-level `esphome:` (or `packages:`) key to activate it.
-Set your esphome binary under **Settings → Tools → ESPHome** if it isn't on
-`PATH` — or use the Docker / managed-venv backends (see
-[Compiling, running & flashing](#compiling-running--flashing)) to avoid a local
-install.
+Completion, hover docs and navigation work with no external tool. **Validation**
+runs the real `esphome config`, so it needs an esphome executable: set it under
+**Settings → Tools → ESPHome** (auto-detected from `PATH` otherwise). The
+Docker / managed-venv backends (see
+[Compiling, running & flashing](#compiling-running--flashing)) cover *compile and
+run* — to also get validation without a global install, set up the managed venv
+and point **Settings → Tools → ESPHome** at its `esphome`.
 
 ## Modules
 
@@ -75,7 +82,7 @@ command with output in the Run console (stop / re-run included).
   - **Local** — the `esphome` set in **Settings → Tools → ESPHome** (or found on
     PATH). Full capability, including serial flashing.
   - **Managed venv** — a plugin-managed Python venv. Set a version and click
-    **Set up / update venv** in Settings (blank = latest, `beta` = latest
+    **Set up / update venv** under **Settings → Tools → ESPHome** (blank = latest, `beta` = latest
     pre-release, `dev` or a branch/tag = from git, `2025.7.0` = that release).
     No global install, full serial support.
   - **Docker** — the official `ghcr.io/esphome/esphome` image; great for compile

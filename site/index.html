@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ESPHome for JetBrains IDEs — completion, validation, compile &amp; flash</title>
+<meta name="description" content="A JetBrains IDE plugin for ESPHome YAML configs: context-aware completion (including LVGL widgets), live validation, hover docs, navigation, and one-click compile / run / flash.">
+<meta property="og:title" content="ESPHome for JetBrains IDEs">
+<meta property="og:description" content="Context-aware completion, live validation, hover docs, navigation, and one-click compile / run / flash for ESPHome YAML — in CLion, IntelliJ IDEA, PyCharm and more.">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://plugins.jetbrains.com">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="nav">
+  <a class="nav__brand" href="#top">
+    <svg class="nav__logo" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 3 9v13h6v-7h6v7h6V9z"/></svg>
+    <span>ESPHome <em>for JetBrains</em></span>
+  </a>
+  <nav class="nav__links">
+    <a href="#features">Features</a>
+    <a href="#run">Compile&nbsp;&amp;&nbsp;flash</a>
+    <a href="#start">Get started</a>
+    <a href="https://github.com/clydebarrow/esphome-clion-plugin">GitHub</a>
+  </nav>
+  <a class="btn btn--sm" href="https://plugins.jetbrains.com/plugin/32186-esphome">Install</a>
+</header>
+
+<main id="top">
+
+<section class="hero">
+  <div class="hero__copy">
+    <p class="eyebrow">CLion · IntelliJ IDEA · PyCharm · 2024.2+</p>
+    <h1>Write ESPHome configs<br>like the IDE understands them.</h1>
+    <p class="lede">
+      Context-aware completion — down to individual LVGL widget properties —
+      live validation from the real <code>esphome config</code>, hover docs,
+      go-to / rename / find-usages, and one-click <strong>compile, run &amp;
+      flash</strong>. All inside the JetBrains IDE you already use.
+    </p>
+    <div class="hero__cta">
+      <div id="install-widget"></div>
+      <a class="btn btn--ghost" href="https://github.com/clydebarrow/esphome-clion-plugin">View on GitHub</a>
+    </div>
+    <p class="hero__sub">Free &amp; open source (Apache-2.0). Bring your own <code>esphome</code>, or let the plugin run it in a managed venv or Docker.</p>
+  </div>
+
+  <div class="hero__art">
+    <div class="editor" aria-hidden="true">
+      <div class="editor__bar">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="editor__file">living_room.yaml</span>
+      </div>
+      <pre class="editor__code"><span class="ln"></span><span class="k">sensor</span><span class="p">:</span>
+<span class="ln"></span>  <span class="p">-</span> <span class="k">platform</span><span class="p">:</span> <span class="s">bme280_i2c</span>
+<span class="ln"></span>    <span class="k">temperature</span><span class="p">:</span>
+<span class="ln"></span>      <span class="k">name</span><span class="p">:</span> <span class="s">Living&nbsp;Room&nbsp;Temp</span>
+<span class="ln"></span>    <span class="k">i</span><span class="caret"></span>
+<span class="popup">
+<span class="row sel"><span class="ico">k</span>i2c_id<span class="ty">use_id</span></span>
+<span class="row"><span class="ico">k</span>iir_filter<span class="ty">enum</span></span>
+<span class="row"><span class="ico">k</span>id<span class="ty">id</span></span>
+<span class="row"><span class="ico">k</span>internal<span class="ty">boolean</span></span>
+<span class="hint">↵ insert · → replace</span></span>
+<span class="ln"></span>      <span class="k">oversampling</span><span class="p">:</span> <span class="s">16x</span></pre>
+    </div>
+  </div>
+</section>
+
+<section class="logos">
+  <span>Works in</span>
+  <strong>CLion</strong><strong>IntelliJ&nbsp;IDEA</strong><strong>PyCharm</strong><strong>GoLand</strong><strong>WebStorm</strong><strong>Rider</strong>
+  <span>and other 2024.2+ IDEs</span>
+</section>
+
+<section id="features" class="features">
+  <h2 class="section__title">Everything ESPHome, with IDE smarts</h2>
+  <p class="section__sub">The plugin models the full ESPHome component catalog, so completion and docs match what the compiler actually accepts.</p>
+
+  <div class="cards">
+    <article class="card">
+      <div class="card__ico">⌨️</div>
+      <h3>Context-aware completion</h3>
+      <p>Top-level keys, nested component keys, <code>platform:</code> values, list items, enums and booleans — plus <code>${substitution}</code> names, triggers (<code>on_*</code>) and automation actions. Works in package-only configs too.</p>
+    </article>
+    <article class="card">
+      <div class="card__ico">🧩</div>
+      <h3>Full LVGL support</h3>
+      <p>The complete <code>lvgl:</code> tree: every widget type, its properties, and <em>nested</em> widgets — driven by ESPHome's own language schema, resolved lazily so recursive layouts complete correctly.</p>
+    </article>
+    <article class="card">
+      <div class="card__ico">✅</div>
+      <h3>Real validation</h3>
+      <p>Runs the actual <code>esphome config</code> in the background and underlines reported errors on the exact lines — no second-guessing from a hand-written schema.</p>
+    </article>
+    <article class="card">
+      <div class="card__ico">🔎</div>
+      <h3>Navigation</h3>
+      <p>Go-to-definition, find-usages and rename for component <code>id:</code>s and substitutions. Id-reference completion offers only the in-scope ids of the right type.</p>
+    </article>
+    <article class="card">
+      <div class="card__ico">📖</div>
+      <h3>Hover documentation</h3>
+      <p>Type, requiredness, default, range, units and allowed values for any field — with a link straight to the ESPHome docs — on hover or <kbd>Ctrl</kbd>+<kbd>Q</kbd>.</p>
+    </article>
+    <article class="card">
+      <div class="card__ico">⚡</div>
+      <h3>Compile, run &amp; flash</h3>
+      <p>Run configurations that invoke ESPHome to <code>compile</code>, <code>run</code>, <code>upload</code>, <code>logs</code> or <code>clean</code> — with output in the Run console. <a href="#run">More below ↓</a></p>
+    </article>
+  </div>
+</section>
+
+<section class="showcase">
+  <div class="show">
+    <div class="show__text">
+      <p class="eyebrow">LVGL</p>
+      <h2>Completion that knows your widgets</h2>
+      <p>Start typing inside an <code>lvgl:</code> block and the plugin offers the right keys for the context — widget triggers, properties, and their value types — all the way down the nested widget tree.</p>
+      <ul class="ticks">
+        <li>Every widget type and property from the language schema</li>
+        <li>Nested widgets resolved recursively</li>
+        <li>Value type shown inline (<code>boolean</code>, <code>string</code>, …)</li>
+      </ul>
+    </div>
+    <div class="show__art">
+      <figure class="shot">
+        <img src="assets/lvgl-completion.png" alt="LVGL completion popup showing resume_on_input (boolean) and scroll_on_focus (string) under an lvgl on_ trigger" loading="lazy">
+        <figcaption>LVGL trigger completion in the editor</figcaption>
+      </figure>
+    </div>
+  </div>
+
+  <div class="show show--rev">
+    <div class="show__text">
+      <p class="eyebrow">Validation</p>
+      <h2>The compiler's own verdict, inline</h2>
+      <p>Instead of approximating ESPHome's rules, the plugin runs <code>esphome config</code> and maps each reported problem back to the offending line — so what the editor flags is exactly what a build would reject.</p>
+      <ul class="ticks">
+        <li>Background <code>ExternalAnnotator</code>, no editor lag</li>
+        <li>Errors mapped to precise line/column</li>
+        <li>Unresolved-id &amp; unresolved-substitution inspections</li>
+      </ul>
+    </div>
+    <div class="show__art">
+      <div class="editor editor--flat" aria-hidden="true">
+        <div class="editor__bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="editor__file">bedroom.yaml</span></div>
+        <pre class="editor__code"><span class="ln"></span><span class="k">i2c</span><span class="p">:</span>
+<span class="ln"></span>  <span class="k">sda</span><span class="p">:</span> <span class="s">21</span>
+<span class="ln"></span>  <span class="k">scl</span><span class="p">:</span> <span class="s">22</span>
+<span class="ln"></span>  <span class="err">frequency</span><span class="p">:</span> <span class="err">9001kHz</span>
+<span class="ln"></span><span class="squiggle">          value must be …</span>
+<span class="ln"></span>
+<span class="ln"></span><span class="k">light</span><span class="p">:</span>
+<span class="ln"></span>  <span class="p">-</span> <span class="k">platform</span><span class="p">:</span> <span class="s">binary</span>
+<span class="ln"></span>    <span class="k">output</span><span class="p">:</span> <span class="err">relay_99</span>  <span class="c"># ← unknown id</span></pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="show">
+    <div class="show__text">
+      <p class="eyebrow">Navigation &amp; docs</p>
+      <h2>Jump, rename, and read the docs in place</h2>
+      <p>Ids and substitutions become first-class symbols: <kbd>Ctrl</kbd>-click to their definition, rename them everywhere at once, or list every usage. Hover any key for its type, default and a docs link.</p>
+      <ul class="ticks">
+        <li>Go-to / find-usages / rename for ids &amp; substitutions</li>
+        <li>Type-aware id completion (only valid targets)</li>
+        <li>Field docs sourced from the catalog</li>
+      </ul>
+    </div>
+    <div class="show__art">
+      <div class="editor editor--flat" aria-hidden="true">
+        <div class="editor__bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="editor__file">docs popup</span></div>
+        <pre class="editor__code"><span class="ln"></span><span class="k">update_interval</span><span class="p">:</span> <span class="s">60s</span><span class="caret"></span>
+<span class="docpop"><b>update_interval</b> <span class="ty">Time</span>
+The interval to check the sensor.
+<span class="muted">default</span> 60s · <span class="muted">range</span> ≥ 0s
+<span class="link">sensor → ESPHome docs ↗</span></span></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="run" class="run">
+  <h2 class="section__title">Compile, run &amp; flash — without leaving the IDE</h2>
+  <p class="section__sub">Right-click any config (top-level <code>esphome:</code> or <code>packages:</code>) → <strong>Run</strong>, or build an <em>ESPHome</em> run configuration by hand. Output streams to the Run console with stop / re-run.</p>
+
+  <div class="run__grid">
+    <div class="run__commands">
+      <h3>Commands</h3>
+      <ul class="pills">
+        <li>compile</li><li>run</li><li>upload</li><li>logs</li><li>clean</li>
+      </ul>
+      <h3>Per-run options</h3>
+      <ul class="ticks">
+        <li><code>--device</code> — OTA host/IP or serial port</li>
+        <li>State reporting (<code>--states</code> / <code>--no-states</code>)</li>
+        <li>Reset device before logs (<code>--reset</code>)</li>
+        <li>Free-form extra arguments</li>
+        <li>Emulate a terminal — in-place compile/OTA progress</li>
+      </ul>
+    </div>
+
+    <div class="run__backends">
+      <h3>Three ways to run ESPHome</h3>
+      <div class="backend">
+        <h4>🖥️ Local</h4>
+        <p>The <code>esphome</code> on your <code>PATH</code> (or set under <strong>Settings → Tools → ESPHome</strong>). Full capability, including serial flashing.</p>
+      </div>
+      <div class="backend">
+        <h4>📦 Managed venv</h4>
+        <p>A plugin-managed Python venv created with one click. Pick a version — blank = latest, <code>beta</code> = latest pre-release, <code>dev</code> or a branch/tag = from git, <code>2025.7.0</code> = that release. No global install, full serial support.</p>
+      </div>
+      <div class="backend">
+        <h4>🐳 Docker</h4>
+        <p>The official <code>ghcr.io/esphome/esphome</code> image — great for compile and OTA, with an optional shared cache. <span class="warn">Serial flashing doesn't work in Docker on macOS</span> (the VM has no USB passthrough) — use Local or the venv there.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="start" class="start">
+  <h2 class="section__title">Get started in two minutes</h2>
+  <ol class="steps">
+    <li>
+      <h3>Install the plugin</h3>
+      <p>From <strong>Settings → Plugins → Marketplace</strong>, search <em>ESPHome</em>, install and restart. <span class="muted">(Or grab the zip from <a href="https://github.com/clydebarrow/esphome-clion-plugin/releases/latest">Releases</a> → Install Plugin from Disk.)</span></p>
+    </li>
+    <li>
+      <h3>Point it at ESPHome</h3>
+      <p>Validation runs the real <code>esphome config</code>, so set your <code>esphome</code> under <strong>Settings → Tools → ESPHome</strong> (auto-detected from <code>PATH</code>). No global install? Set up the managed venv and point that setting at its <code>esphome</code>. Compile/run can also use the Docker backend.</p>
+    </li>
+    <li>
+      <h3>Open a config &amp; go</h3>
+      <p>Open any file with a top-level <code>esphome:</code> (or <code>packages:</code>) key. Completion, hover docs and validation light up immediately. Right-click → <strong>Run</strong> to compile or flash.</p>
+    </li>
+  </ol>
+
+  <div class="cta-band">
+    <h2>Ready to try it?</h2>
+    <div class="cta-band__btns">
+      <div id="install-widget-2"></div>
+      <a class="btn btn--ghost" href="https://github.com/clydebarrow/esphome-clion-plugin">Source &amp; issues on GitHub</a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <div class="footer__cols">
+    <div>
+      <strong>ESPHome for JetBrains</strong>
+      <p>An IDE plugin for ESPHome YAML device configs. Not affiliated with JetBrains or the ESPHome project.</p>
+    </div>
+    <nav>
+      <a href="https://plugins.jetbrains.com/plugin/32186-esphome">JetBrains Marketplace</a>
+      <a href="https://github.com/clydebarrow/esphome-clion-plugin">GitHub repository</a>
+      <a href="https://github.com/clydebarrow/esphome-clion-plugin/releases">Releases &amp; changelog</a>
+      <a href="https://esphome.io">ESPHome.io</a>
+    </nav>
+  </div>
+  <p class="footer__legal">Apache-2.0 licensed. ESPHome catalog data © the ESPHome project (Apache-2.0).</p>
+</footer>
+
+<script src="https://plugins.jetbrains.com/assets/scripts/mp-widget.js"></script>
+<script>
+  function fallbackInstall(el) {
+    el.innerHTML = '<a class="btn btn--primary" href="https://plugins.jetbrains.com/plugin/32186-esphome">Install from Marketplace</a>';
+  }
+  document.addEventListener('DOMContentLoaded', function () {
+    ['install-widget', 'install-widget-2'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      try {
+        if (window.MarketplaceWidget && MarketplaceWidget.setupMarketplaceWidget) {
+          MarketplaceWidget.setupMarketplaceWidget('install', 32186, '#' + id);
+        } else {
+          fallbackInstall(el);
+        }
+      } catch (e) {
+        fallbackInstall(el);
+      }
+    });
+  });
+</script>
+
+</body>
+</html>
