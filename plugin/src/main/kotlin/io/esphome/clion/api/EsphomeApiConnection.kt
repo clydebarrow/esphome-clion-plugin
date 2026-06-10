@@ -3,6 +3,7 @@ package io.esphome.clion.api
 import com.intellij.openapi.diagnostic.thisLogger
 import io.esphome.clion.api.proto.ApiMessages
 import io.esphome.clion.api.transport.FrameHelper
+import io.esphome.clion.api.transport.NoiseFrameHelper
 import io.esphome.clion.api.transport.PlaintextFrameHelper
 import java.net.InetSocketAddress
 import java.net.Socket
@@ -71,15 +72,15 @@ class EsphomeApiConnection(
         }
     }
 
-    /** Plaintext today; Noise (when a key is set) lands in the encryption follow-up. */
+    /** Noise when the device's api: has an encryption key, plaintext otherwise. */
     private fun createFrameHelper(sock: Socket): FrameHelper {
-        if (!encryptionKey.isNullOrBlank()) {
-            throw UnsupportedOperationException(
-                "This device's API is encrypted; encrypted-API support is coming soon. " +
-                    "For now, connect to a device whose api: has no encryption: key.",
-            )
+        val input = sock.getInputStream().buffered()
+        val output = sock.getOutputStream()
+        return if (encryptionKey.isNullOrBlank()) {
+            PlaintextFrameHelper(input, output)
+        } else {
+            NoiseFrameHelper(input, output, encryptionKey)
         }
-        return PlaintextFrameHelper(sock.getInputStream().buffered(), sock.getOutputStream())
     }
 
     /** Read HelloResponse, then run legacy password auth only if a password is set. */

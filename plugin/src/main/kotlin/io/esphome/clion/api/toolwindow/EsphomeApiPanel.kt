@@ -78,10 +78,11 @@ class EsphomeApiPanel(private val project: Project) :
         target = derived
         if (connection != null) return
         if (hostField.text.isBlank() && derived.host != null) hostField.text = hostPort(derived.host, derived.port)
+        val device = derived.deviceName ?: "device"
         statusLabel.text = when {
             !derived.hasApi -> "No api: in the open config — enter host:port to connect."
-            derived.encryptionKey != null -> "Encrypted api: detected (encrypted support coming soon)."
-            else -> "Ready — Connect to ${derived.deviceName ?: "device"}."
+            derived.encryptionKey != null -> "Ready — Connect to $device (encrypted)."
+            else -> "Ready — Connect to $device."
         }
     }
 
