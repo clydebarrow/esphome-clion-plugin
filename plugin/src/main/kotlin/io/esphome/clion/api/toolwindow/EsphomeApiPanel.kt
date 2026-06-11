@@ -13,6 +13,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextField
+import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.util.ui.JBUI
 import io.esphome.clion.api.EsphomeApiConnection
 import io.esphome.clion.api.EsphomeApiTarget
@@ -21,21 +22,25 @@ import io.esphome.clion.api.proto.ApiState
 import java.awt.BorderLayout
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
 import javax.swing.JButton
 import javax.swing.JPanel
 
 /**
- * The **ESPHome Device** tool window: a host:port field (pre-filled from the
- * active config), Connect/Disconnect, a status line, and a live table of the
- * device's entities. Read-only — it subscribes to states and displays them.
+ * The **ESPHome Device** tool window: a Connect/Disconnect button, host and key
+ * fields (pre-filled from the active config), a status line, and a live view of
+ * the device's entities (with controls for the actionable ones). Opening it via
+ * the context-menu action auto-connects when a host is known, and an unexpected
+ * drop (e.g. the device reboots) reconnects on a backing-off schedule.
  */
 class EsphomeApiPanel(private val project: Project) :
     JPanel(BorderLayout()), Disposable, EsphomeApiConnection.Listener {
 
     private val entityView = EntityListView()
     private val pendingEntities = mutableListOf<ApiEntity>()
-    private val hostField = JBTextField()
-    private val keyField = JBTextField().apply { emptyText.text = "blank = plaintext; base64 key for encrypted api:" }
+    private val hostField = JBTextField(22)
+    private val keyField = JBTextField(44).apply { emptyText.text = "blank = plaintext; base64 key for encrypted api:" }
     private val connectButton = JButton("Connect")
     private val statusLabel = JBLabel(" ")
 
@@ -43,13 +48,25 @@ class EsphomeApiPanel(private val project: Project) :
     @Volatile private var connection: EsphomeApiConnection? = null
     private var target: EsphomeApiTarget.Target? = null
 
+    /**
+     * The user wants a live connection: set by Connect (and auto-connect),
+     * cleared by Disconnect / dispose. While true, an unexpected drop (e.g. the
+     * device reboots) schedules a reconnect; a user Disconnect does not.
+     */
+    @Volatile private var active = false
+    private var reconnectAttempts = 0
+    @Volatile private var reconnectFuture: ScheduledFuture<*>? = null
+
     init {
         val controls = JPanel(GridBagLayout()).apply {
-            add(JBLabel("Host:"), gbc(0, 0))
-            add(hostField, gbc(1, 0, grow = true))
-            add(connectButton, gbc(2, 0))
-            add(JBLabel("Key:"), gbc(0, 1))
-            add(keyField, gbc(1, 1, grow = true, width = 2))
+            add(connectButton, gbc(0, 0))
+            add(JBLabel("Host:"), gbc(1, 0))
+            add(hostField, gbc(2, 0))
+            add(JBLabel("Key:"), gbc(1, 1))
+            add(keyField, gbc(2, 1))
+            // Trailing glue: keep the fields at their natural width, left-aligned,
+            // instead of stretching the whole tool window wide.
+            add(JPanel().apply { isOpaque = false }, gbc(3, 0, grow = true, height = 2))
         }
         val header = JPanel(BorderLayout()).apply {
             border = JBUI.Borders.empty(6)
@@ -60,8 +77,8 @@ class EsphomeApiPanel(private val project: Project) :
         add(header, BorderLayout.NORTH)
         add(JBScrollPane(entityView), BorderLayout.CENTER)
 
-        connectButton.addActionListener { if (connection == null) connect() else connection?.stop() }
-        hostField.addActionListener { if (connection == null) connect() }
+        connectButton.addActionListener { if (active) stopConnection() else connect() }
+        hostField.addActionListener { if (!active) connect() }
 
         project.messageBus.connect(this).subscribe(
             FileEditorManagerListener.FILE_EDITOR_MANAGER,
@@ -82,7 +99,8 @@ class EsphomeApiPanel(private val project: Project) :
             return
         }
         target = derived
-        if (connection != null) return
+        // Don't touch the fields/status while connected or mid-reconnect.
+        if (connection != null || active) return
         if (hostField.text.isBlank() && derived.host != null) hostField.text = hostPort(derived.host, derived.port)
         if (keyField.text.isBlank() && derived.encryptionKey != null) keyField.text = derived.encryptionKey
         updateReadyStatus(derived)
@@ -105,6 +123,9 @@ class EsphomeApiPanel(private val project: Project) :
         derived.host?.let { hostField.text = hostPort(it, derived.port) }
         derived.encryptionKey?.let { keyField.text = it }
         if (connection == null) updateReadyStatus(derived)
+        // Opened by explicit user action: if we now have a host and aren't
+        // already connected, connect right away rather than making them click.
+        if (!active && hostField.text.isNotBlank()) connect()
     }
 
     private fun updateReadyStatus(derived: EsphomeApiTarget.Target) {
@@ -116,9 +137,9 @@ class EsphomeApiPanel(private val project: Project) :
         }
     }
 
-    private fun gbc(x: Int, y: Int, grow: Boolean = false, width: Int = 1): GridBagConstraints =
+    private fun gbc(x: Int, y: Int, grow: Boolean = false, width: Int = 1, height: Int = 1): GridBagConstraints =
         GridBagConstraints().apply {
-            gridx = x; gridy = y; gridwidth = width
+            gridx = x; gridy = y; gridwidth = width; gridheight = height
             insets = JBUI.insets(2)
             anchor = GridBagConstraints.WEST
             if (grow) { weightx = 1.0; fill = GridBagConstraints.HORIZONTAL }
@@ -130,6 +151,9 @@ class EsphomeApiPanel(private val project: Project) :
             statusLabel.text = "Enter a host, e.g. living-room.local or 10.0.0.5"
             return
         }
+        reconnectFuture?.cancel(false)
+        reconnectFuture = null
+        active = true
         val (host, port) = parseHostPort(raw)
         pendingEntities.clear()
         entityView.clear()
@@ -138,6 +162,33 @@ class EsphomeApiPanel(private val project: Project) :
         connection = conn
         connectButton.text = "Disconnect"
         conn.start()
+    }
+
+    /** User-initiated disconnect: clear intent so no reconnect is scheduled. */
+    private fun stopConnection() {
+        active = false
+        reconnectFuture?.cancel(false)
+        reconnectFuture = null
+        reconnectAttempts = 0
+        connectButton.text = "Connect"
+        connection?.stop()
+    }
+
+    /**
+     * Schedule a reconnect after an unexpected drop, backing off
+     * [RECONNECT_BASE_SEC] × attempt up to [RECONNECT_MAX_SEC]. Re-armed each
+     * failure; the counter resets once a connection streams entities.
+     */
+    private fun scheduleReconnect() {
+        reconnectAttempts++
+        val delaySec = (RECONNECT_BASE_SEC * reconnectAttempts).coerceAtMost(RECONNECT_MAX_SEC)
+        connectButton.text = "Disconnect"
+        statusLabel.text = "Disconnected — reconnecting in ${delaySec}s…"
+        reconnectFuture = AppExecutorUtil.getAppScheduledExecutorService().schedule(
+            { ui { if (active && connection == null) connect() } },
+            delaySec.toLong(),
+            TimeUnit.SECONDS,
+        )
     }
 
     private fun parseHostPort(raw: String): Pair<String, Int> {
@@ -169,12 +220,17 @@ class EsphomeApiPanel(private val project: Project) :
     // --- EsphomeApiConnection.Listener (background thread) → EDT ---
     override fun onStatus(status: String) = ui { statusLabel.text = status }
     override fun onEntity(entity: ApiEntity) = ui { pendingEntities.add(entity) }
-    override fun onEntitiesComplete() = ui { entityView.setEntities(pendingEntities.toList()) }
+    override fun onEntitiesComplete() = ui {
+        reconnectAttempts = 0 // a clean stream: restart the backoff for next time
+        entityView.setEntities(pendingEntities.toList())
+    }
     override fun onState(state: ApiState) = ui { entityView.updateState(state) }
     override fun onError(message: String) = ui { statusLabel.text = "Error: $message" }
     override fun onClosed() = ui {
         connection = null
-        connectButton.text = "Connect"
+        // Keep trying while the user still wants a connection (device rebooted,
+        // network blip); a user Disconnect cleared `active`, so it stays closed.
+        if (active && !disposed) scheduleReconnect() else connectButton.text = "Connect"
     }
 
     private inline fun ui(crossinline action: () -> Unit) {
@@ -184,6 +240,13 @@ class EsphomeApiPanel(private val project: Project) :
 
     override fun dispose() {
         disposed = true
+        active = false
+        reconnectFuture?.cancel(false)
         connection?.stop()
+    }
+
+    private companion object {
+        const val RECONNECT_BASE_SEC = 5
+        const val RECONNECT_MAX_SEC = 30
     }
 }
