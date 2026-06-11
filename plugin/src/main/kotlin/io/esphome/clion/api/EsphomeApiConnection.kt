@@ -62,8 +62,8 @@ class EsphomeApiConnection(
 
             readLoop(helper)
         } catch (e: Exception) {
-            if (running.get()) listener.onError(e.message ?: e.javaClass.simpleName)
-            thisLogger().info("ESPHome API connection to $host:$port ended: ${e.message}")
+            thisLogger().warn("ESPHome API connection to $host:$port failed", e)
+            if (running.get()) listener.onError(describeError(e))
         } finally {
             running.set(false)
             runCatching { socket?.close() }
@@ -80,6 +80,21 @@ class EsphomeApiConnection(
             )
         }
         return PlaintextFrameHelper(sock.getInputStream().buffered(), sock.getOutputStream())
+    }
+
+    /** Turn a low-level failure into an actionable, never-blank status message. */
+    private fun describeError(e: Throwable): String = when (e) {
+        is java.net.UnknownHostException ->
+            "Host not found: $host — is mDNS resolving '$host'? Try the device's IP address."
+        is java.net.SocketTimeoutException -> "Timed out connecting to $host:$port."
+        is java.net.ConnectException ->
+            "Can't reach $host:$port (${e.message ?: "connection refused"}) — is the device on and api: enabled?"
+        is java.io.EOFException ->
+            "Device closed the connection during the handshake. It likely requires API encryption " +
+                "(set api: encryption: key:), the key is wrong, or api: is disabled."
+        is java.net.SocketException -> "Connection lost: ${e.message ?: "reset by the device"}."
+        is SecurityException -> e.message ?: "Authentication failed."
+        else -> e.message?.takeIf { it.isNotBlank() } ?: "${e.javaClass.simpleName} — see idea.log for details."
     }
 
     /** Read HelloResponse, then run legacy password auth only if a password is set. */

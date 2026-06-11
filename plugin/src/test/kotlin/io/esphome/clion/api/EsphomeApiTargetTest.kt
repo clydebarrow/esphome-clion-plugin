@@ -71,6 +71,20 @@ class EsphomeApiTargetTest : BasePlatformTestCase() {
         assertTrue(t.hasApi)
     }
 
+    fun `test resolves an encryption key from secrets yaml`() {
+        myFixture.addFileToProject(
+            "d/secrets.yaml",
+            "wifi_password: hunter2\nencryption_key: \"ZkW71UXWrdml8HTrEGqZXOybqi5UEZOFm3GPOlcI6gk=\"\n",
+        )
+        val device = myFixture.addFileToProject(
+            "d/device.yaml",
+            "esphome:\n  name: wave\napi:\n  encryption:\n    key: !secret encryption_key\n",
+        )
+        myFixture.configureFromExistingVirtualFile(device.virtualFile)
+        val t = EsphomeApiTarget.forFile(project, device.virtualFile)
+        assertEquals("ZkW71UXWrdml8HTrEGqZXOybqi5UEZOFm3GPOlcI6gk=", t.encryptionKey)
+    }
+
     fun `test no api block is reported`() {
         val file = myFixture.configureByText("device.yaml", "esphome:\n  name: x\n")
         val t = EsphomeApiTarget.forFile(project, file.virtualFile)
