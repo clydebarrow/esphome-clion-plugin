@@ -12,8 +12,9 @@ release.
 - **ESPHome Device** tool window: connect to a running device over the native
   API and watch its entities (sensors, switches, lights, …) with live-updating
   state. Host/port are pre-filled from the open config's `api:`/address, with a
-  manual override. Plaintext API for now; encrypted (`encryption:`) support is
-  coming next.
+  manual override. Works with both plaintext and **encrypted** (`encryption:`)
+  APIs — the Noise handshake uses only the bundled JDK crypto, no extra
+  dependency.
 
 ### Fixed
 
