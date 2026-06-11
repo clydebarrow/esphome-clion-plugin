@@ -7,10 +7,13 @@
     <vendor email="clyde@stubbs.me" url="https://esphome.io">Clyde Stubbs</vendor>
 
     <description><![CDATA[
-        <p>ESPHome configuration support for JetBrains IDEs.</p>
-        <p>Provides completion, documentation, validation, and navigation for
-        ESPHome YAML device configurations, driven by the ESPHome component
-        catalog.</p>
+        <p>ESPHome support for JetBrains IDEs: context-aware completion, hover
+        documentation, live validation, and navigation for ESPHome YAML device
+        configurations — driven by the ESPHome component catalog.</p>
+        <p>Also: compile / run / flash run configurations, and a live device tool
+        window showing a running device's entities over the native API.</p>
+        <p>Documentation &amp; screenshots:
+        <a href="https://clydebarrow.github.io/esphome-clion-plugin/">clydebarrow.github.io/esphome-clion-plugin</a></p>
     ]]></description>
 
     <!-- YAML PSI/parsing comes from the bundled YAML plugin (present in CLion). -->
