@@ -124,7 +124,9 @@ object EsphomeCommandLines {
         val commandLine = when (backend) {
             EsphomeBackend.LOCAL, EsphomeBackend.VENV -> {
                 val exe = executable ?: error("esphome executable not found")
-                GeneralCommandLine(exe, "config", configFile.path)
+                // `esphome config` validates the SDL display too, which runs
+                // sdl2-config — so validation needs the same env as a build.
+                GeneralCommandLine(exe, "config", configFile.path).withEnvironment(sdlEnvironment())
             }
             EsphomeBackend.DOCKER ->
                 GeneralCommandLine(dockerExecutable)
