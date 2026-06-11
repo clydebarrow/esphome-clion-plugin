@@ -7,6 +7,8 @@ release.
 
 ## [Unreleased]
 
+## [0.11.0]
+
 ### Added
 
 - Config **warnings** from `esphome config` (e.g. a strapping-pin advisory) are
