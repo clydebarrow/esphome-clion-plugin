@@ -95,18 +95,22 @@ class EsphomeValidationAnnotator : ExternalAnnotator<EsphomeValidationAnnotator.
 
         return try {
             val output = CapturingProcessHandler(command).runProcess(TIMEOUT_MS)
-            // Filter to the open file: errors in other files of the graph (incl.
-            // the root) surface when those files are themselves open.
-            val diagnostics =
+            val combined = output.stdout + "\n" + output.stderr
+            // Errors come only from a failed run (a valid config's echoed dump
+            // would be mis-parsed); warnings appear either way, so parse them
+            // separately and always. Filter to the open file: errors in other
+            // graph files surface when those files are themselves open.
+            val errors =
                 if (output.exitCode == 0) {
                     emptyList()
                 } else {
                     EsphomeConfigOutputParser.parse(
-                        output.stdout + "\n" + output.stderr,
+                        combined,
                         info.targetPath,
                         includeTopLevelErrors = info.configPath == info.targetPath,
                     )
                 }
+            val diagnostics = errors + EsphomeConfigOutputParser.parseWarnings(combined, info.targetPath)
             thisLogger().info(
                 "esphome config ${info.configPath} (for ${info.targetPath}): " +
                     "exit=${output.exitCode}, ${diagnostics.size} diagnostic(s)",
@@ -173,25 +177,32 @@ class EsphomeValidationAnnotator : ExternalAnnotator<EsphomeValidationAnnotator.
         if (document.lineCount == 0) return
 
         for (diagnostic in annotationResult) {
-            val range = rangeFor(document, diagnostic)
-            holder.newAnnotation(HighlightSeverity.ERROR, diagnostic.message)
+            val range = rangeFor(document, diagnostic) ?: continue
+            val severity = if (diagnostic.severity == EsphomeSeverity.WARNING) {
+                HighlightSeverity.WARNING
+            } else {
+                HighlightSeverity.ERROR
+            }
+            holder.newAnnotation(severity, diagnostic.message)
                 .range(range)
                 .create()
         }
     }
 
     /**
-     * Choose the range to underline:
+     * Choose the range to underline, or null to skip:
      *  - file-level errors (no source line) locate their token, e.g. a bad
      *    platform value, and fall back to the first line;
+     *  - a warning is anchored only at its token — if it isn't in this file, the
+     *    warning is skipped (it belongs to wherever the token lives);
      *  - "missing"/"required" errors keep the component anchor (the echoed key is
      *    just nearby context — the real problem is an *absent* key);
      *  - otherwise refine to the offending key's line.
      */
-    private fun rangeFor(document: Document, diagnostic: EsphomeDiagnostic): TextRange {
+    private fun rangeFor(document: Document, diagnostic: EsphomeDiagnostic): TextRange? {
         if (diagnostic.anchorLine <= 0) {
             diagnostic.searchToken?.let { findToken(document, it) }?.let { return it }
-            return trimmedLineRange(document, 0)
+            return if (diagnostic.severity == EsphomeSeverity.WARNING) null else trimmedLineRange(document, 0)
         }
         val anchor = (diagnostic.anchorLine - 1).coerceIn(0, document.lineCount - 1)
         val line = diagnostic.offendingKey
