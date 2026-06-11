@@ -19,6 +19,50 @@ class WrapLayout(align: Int = LEFT, hgap: Int = 5, vgap: Int = 5) : FlowLayout(a
     override fun minimumLayoutSize(target: Container): Dimension =
         layoutSize(target, false).also { it.width -= hgap + 1 }
 
+    /**
+     * Lay out left-to-right, wrapping rows — but **top-align** each item in its
+     * row (plain `FlowLayout` vertically centers, which looks wrong when columns
+     * have different heights).
+     */
+    override fun layoutContainer(target: Container) {
+        synchronized(target.treeLock) {
+            val insets = target.insets
+            val maxWidth = target.width - (insets.left + insets.right + hgap * 2)
+            var y = insets.top + vgap
+            var x = 0
+            var rowHeight = 0
+            var rowStart = 0
+
+            fun placeRow(end: Int) {
+                var cx = insets.left + hgap
+                for (i in rowStart until end) {
+                    val m = target.getComponent(i)
+                    if (!m.isVisible) continue
+                    m.setLocation(cx, y) // top of the row, not centered
+                    cx += m.width + hgap
+                }
+            }
+
+            for (i in 0 until target.componentCount) {
+                val m = target.getComponent(i)
+                if (!m.isVisible) continue
+                val d = m.preferredSize
+                m.setSize(d.width, d.height)
+                if (x != 0 && x + d.width > maxWidth) {
+                    placeRow(i)
+                    y += rowHeight + vgap
+                    x = 0
+                    rowHeight = 0
+                    rowStart = i
+                }
+                if (x != 0) x += hgap
+                x += d.width
+                rowHeight = maxOf(rowHeight, d.height)
+            }
+            placeRow(target.componentCount)
+        }
+    }
+
     private fun layoutSize(target: Container, preferred: Boolean): Dimension {
         synchronized(target.treeLock) {
             val targetWidth = (target.size.width.takeIf { it > 0 } ?: Int.MAX_VALUE)
