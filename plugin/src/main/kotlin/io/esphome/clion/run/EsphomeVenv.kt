@@ -43,7 +43,7 @@ object EsphomeVenv {
      * Create (or refresh) the venv and install `esphome` — a specific [version],
      * or latest when blank — in the background, notifying on completion/failure.
      */
-    fun provision(project: Project?, version: String) {
+    fun provision(project: Project?, version: String, onSuccess: (() -> Unit)? = null) {
         ProgressManager.getInstance().run(
             object : Task.Backgroundable(project, "Setting up ESPHome venv", true) {
                 override fun run(indicator: ProgressIndicator) {
@@ -59,6 +59,7 @@ object EsphomeVenv {
                         indicator,
                     )
                     notify("ESPHome venv ready: ${esphome().path}", NotificationType.INFORMATION)
+                    onSuccess?.let { ApplicationManager.getApplication().invokeLater(it) }
                 }
 
                 override fun onThrowable(error: Throwable) {

@@ -19,8 +19,9 @@ import io.esphome.clion.run.EsphomeVenv
 class EsphomeSettingsConfigurable : BoundConfigurable("ESPHome") {
 
     override fun createPanel(): DialogPanel = panel {
+        lateinit var executableField: TextFieldWithBrowseButton
         row("esphome executable:") {
-            cell(browseField())
+            cell(browseField().also { executableField = it })
                 .bindText(
                     { EsphomeSettings.getInstance().state.executablePath ?: "" },
                     { EsphomeSettings.getInstance().state.executablePath = it.trim() },
@@ -78,11 +79,18 @@ class EsphomeSettingsConfigurable : BoundConfigurable("ESPHome") {
             }.rowComment("Version to install (e.g. <code>2025.7.0</code>), or blank for the latest.")
             row {
                 button("Set up / update venv") {
-                    EsphomeVenv.provision(null, versionField.text.trim())
+                    EsphomeVenv.provision(null, versionField.text.trim()) {
+                        // Once the venv is ready, point validation at it if no
+                        // executable is set, so it works without further setup.
+                        if (executableField.text.isBlank()) {
+                            executableField.text = EsphomeVenv.esphome().path
+                        }
+                    }
                 }
             }.rowComment(
                 "Creates a managed Python venv and pip-installs esphome. " +
-                    "Select the <b>Managed venv</b> backend on a run configuration to use it.",
+                    "Select the <b>Managed venv</b> backend on a run configuration to use it. " +
+                    "If the executable above is blank, it's set to the venv's esphome.",
             )
         }
     }
