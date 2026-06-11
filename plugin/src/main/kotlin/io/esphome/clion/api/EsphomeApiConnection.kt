@@ -46,7 +46,9 @@ class EsphomeApiConnection(
 
     private fun run() {
         try {
-            listener.onStatus("Connecting to $host:$port…")
+            val encrypted = !encryptionKey.isNullOrBlank()
+            thisLogger().info("ESPHome API connecting to $host:$port (${if (encrypted) "noise/encrypted" else "plaintext"})")
+            listener.onStatus("Connecting to $host:$port (${if (encrypted) "encrypted" else "plaintext"})…")
             val sock = Socket().also { socket = it }
             sock.connect(InetSocketAddress(host, port), CONNECT_TIMEOUT_MS)
             sock.tcpNoDelay = true
