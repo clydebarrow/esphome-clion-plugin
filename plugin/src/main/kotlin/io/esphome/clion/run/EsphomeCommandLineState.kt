@@ -3,6 +3,7 @@ package io.esphome.clion.run
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.configurations.PathEnvironmentVariableUtil
 import com.intellij.execution.configurations.PtyCommandLine
+import com.intellij.execution.process.CapturingProcessHandler
 import com.intellij.execution.process.KillableColoredProcessHandler
 import com.intellij.execution.process.ProcessHandler
 import com.intellij.execution.process.ProcessTerminatedListener
@@ -218,10 +219,10 @@ object EsphomeCommandLines {
         Regex("""-L(\S+)""").findAll(libsOutput).map { it.groupValues[1] }.distinct().toList()
 
     private fun runForOutput(vararg command: String): String = try {
-        val process = ProcessBuilder(*command).redirectErrorStream(false).start()
-        val output = process.inputStream.bufferedReader().use { it.readText() }
-        process.waitFor(5, java.util.concurrent.TimeUnit.SECONDS)
-        output
+        // CapturingProcessHandler drains stdout *and* stderr on separate threads
+        // and kills the process on timeout — so this can't hang or deadlock.
+        val output = CapturingProcessHandler(GeneralCommandLine(*command)).runProcess(5_000)
+        if (output.isTimeout || output.exitCode != 0) "" else output.stdout
     } catch (_: Exception) {
         ""
     }
