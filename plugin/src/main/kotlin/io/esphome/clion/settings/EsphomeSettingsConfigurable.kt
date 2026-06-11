@@ -31,11 +31,12 @@ class EsphomeSettingsConfigurable : BoundConfigurable("ESPHome") {
 
         group("Run configuration defaults") {
             row("Default backend:") {
-                comboBox(listOf(BACKEND_LOCAL, BACKEND_DOCKER))
+                comboBox(listOf(BACKEND_LOCAL, BACKEND_VENV, BACKEND_DOCKER))
                     .applyToComponent {
                         renderer = SimpleListCellRenderer.create { label, value, _ ->
                             label.text = when (value) {
                                 BACKEND_DOCKER -> "Docker"
+                                BACKEND_VENV -> "Managed venv"
                                 BACKEND_LOCAL -> "Local esphome"
                                 else -> ""
                             }
@@ -89,7 +90,7 @@ class EsphomeSettingsConfigurable : BoundConfigurable("ESPHome") {
                 }
             }.rowComment(
                 "Creates a managed Python venv and pip-installs esphome. " +
-                    "Select the <b>Managed venv</b> backend on a run configuration to use it. " +
+                    "Choose the <b>Managed venv</b> backend above (or on a run configuration) to use it. " +
                     "If the executable above is blank, it's set to the venv's esphome.",
             )
         }
@@ -116,6 +117,7 @@ class EsphomeSettingsConfigurable : BoundConfigurable("ESPHome") {
 
     private companion object {
         const val BACKEND_LOCAL = "local"
+        const val BACKEND_VENV = "venv"
         const val BACKEND_DOCKER = "docker"
     }
 }

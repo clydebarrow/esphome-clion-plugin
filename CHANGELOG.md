@@ -7,6 +7,13 @@ release.
 
 ## [Unreleased]
 
+### Changed
+
+- The **default backend** setting (Settings | Tools | ESPHome) now offers
+  **Managed venv** alongside Local and Docker, so a provisioned venv can be the
+  default for new run configurations and config validation — it was previously
+  selectable only per run configuration.
+
 ## [0.11.0]
 
 ### Added
