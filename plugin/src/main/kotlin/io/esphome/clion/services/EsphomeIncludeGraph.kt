@@ -86,6 +86,23 @@ class EsphomeIncludeGraph(private val project: Project) {
     }
 
     /**
+     * The *downward* include closure of [root]: [root] plus every file it
+     * `!include`s, transitively. Unlike [connectedFiles] this does not walk up to
+     * other roots, so a shared package's siblings (other devices that include it)
+     * are excluded — the right scope for resolving one device's substitutions.
+     */
+    fun includeClosure(root: VirtualFile): Set<VirtualFile> {
+        val all = LinkedHashSet<VirtualFile>()
+        val queue = ArrayDeque<VirtualFile>().apply { add(root) }
+        while (queue.isNotEmpty()) {
+            val current = queue.removeFirst()
+            if (!all.add(current)) continue
+            queue.addAll(directIncludes(current))
+        }
+        return all
+    }
+
+    /**
      * True if [file] is an ESPHome config we should offer editor features
      * (completion, documentation) for: a standalone config itself — top-level
      * `esphome:` *or* `packages:` (a package commonly supplies the `esphome:`

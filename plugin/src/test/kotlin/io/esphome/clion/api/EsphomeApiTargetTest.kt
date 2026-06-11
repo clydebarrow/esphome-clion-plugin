@@ -85,6 +85,28 @@ class EsphomeApiTargetTest : BasePlatformTestCase() {
         assertEquals("ZkW71UXWrdml8HTrEGqZXOybqi5UEZOFm3GPOlcI6gk=", t.encryptionKey)
     }
 
+    fun `test name from a shared package resolves to this device, not a sibling`() {
+        // standard.yaml is a shared package whose esphome: name is a substitution
+        // each device supplies. A sibling device using the same package must not
+        // bleed its name into this device's host.
+        myFixture.addFileToProject(
+            "p/standard.yaml",
+            "esphome:\n  name: \${name}\napi:\n",
+        )
+        myFixture.addFileToProject(
+            "p/wave-1-54.yaml",
+            "substitutions:\n  name: wave-1-54\npackages:\n  - !include standard.yaml\n",
+        )
+        val device = myFixture.addFileToProject(
+            "p/w-2-16.yaml",
+            "substitutions:\n  name: wave-2-16\npackages:\n  - !include standard.yaml\n",
+        )
+        myFixture.configureFromExistingVirtualFile(device.virtualFile)
+        val t = EsphomeApiTarget.forFile(project, device.virtualFile)
+        assertEquals("wave-2-16.local", t.host)
+        assertTrue(t.hasApi)
+    }
+
     fun `test no api block is reported`() {
         val file = myFixture.configureByText("device.yaml", "esphome:\n  name: x\n")
         val t = EsphomeApiTarget.forFile(project, file.virtualFile)

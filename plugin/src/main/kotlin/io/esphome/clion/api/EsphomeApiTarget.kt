@@ -4,6 +4,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiManager
 import io.esphome.clion.psi.EsphomeYaml
+import io.esphome.clion.services.EsphomeConfigRoots
 import io.esphome.clion.services.EsphomeIncludeGraph
 import io.esphome.clion.services.EsphomeSubstitutions
 import org.jetbrains.yaml.psi.YAMLFile
@@ -33,7 +34,15 @@ object EsphomeApiTarget {
     )
 
     fun forFile(project: Project, file: VirtualFile): Target {
+        val subs = EsphomeSubstitutions.getInstance(project)
         val psiManager = PsiManager.getInstance(project)
+        // Interpret the file in its device root (the run-config device for a shared
+        // package) and resolve over that root's *downward* include closure, so a
+        // shared package's `${name}` resolves to this device, not a sibling.
+        val root = EsphomeConfigRoots.effectiveRoot(project, file) ?: file
+        val files = EsphomeIncludeGraph.getInstance(project).includeClosure(root)
+        val defs = subs.definitionsIn(files)
+
         var name: String? = null
         var useAddress: String? = null
         var port: Int? = null
@@ -41,22 +50,22 @@ object EsphomeApiTarget {
         var key: String? = null
         var hasApi = false
 
-        for (vf in EsphomeIncludeGraph.getInstance(project).connectedFiles(file)) {
+        for (vf in files) {
             val yaml = psiManager.findFile(vf) as? YAMLFile ?: continue
             for (doc in yaml.documents) {
                 val top = EsphomeYaml.topLevelMapping(doc) ?: continue
 
                 (top.getKeyValueByKey("esphome")?.value as? YAMLMapping)
                     ?.getKeyValueByKey("name")
-                    ?.let { name = name ?: resolve(project, vf, it) }
+                    ?.let { name = name ?: resolve(subs, defs, project, vf, it) }
 
                 top.getKeyValueByKey("api")?.let { api ->
                     hasApi = true
                     (api.value as? YAMLMapping)?.let { apiMap ->
                         apiMap.getKeyValueByKey("port")?.valueText?.toIntOrNull()?.let { port = port ?: it }
-                        password = password ?: resolve(project, vf, apiMap.getKeyValueByKey("password"))
+                        password = password ?: resolve(subs, defs, project, vf, apiMap.getKeyValueByKey("password"))
                         key = key ?: resolve(
-                            project, vf,
+                            subs, defs, project, vf,
                             (apiMap.getKeyValueByKey("encryption")?.value as? YAMLMapping)?.getKeyValueByKey("key"),
                         )
                     }
@@ -65,7 +74,7 @@ object EsphomeApiTarget {
                 for (net in listOf("wifi", "ethernet")) {
                     (top.getKeyValueByKey(net)?.value as? YAMLMapping)
                         ?.getKeyValueByKey("use_address")
-                        ?.let { useAddress = useAddress ?: resolve(project, vf, it) }
+                        ?.let { useAddress = useAddress ?: resolve(subs, defs, project, vf, it) }
                 }
             }
         }
@@ -76,15 +85,22 @@ object EsphomeApiTarget {
 
     /**
      * The effective string value of [kv]: a `!secret name` is looked up in
-     * `secrets.yaml`; otherwise `${substitution}`s are expanded. Blank → null.
+     * `secrets.yaml`; otherwise `${substitution}`s are expanded against [defs]
+     * (the chosen device root's scope). Blank → null.
      */
-    private fun resolve(project: Project, vf: VirtualFile, kv: YAMLKeyValue?): String? {
+    private fun resolve(
+        subs: EsphomeSubstitutions,
+        defs: Map<String, EsphomeSubstitutions.Definition>,
+        project: Project,
+        vf: VirtualFile,
+        kv: YAMLKeyValue?,
+    ): String? {
         val scalar = kv?.value as? YAMLScalar ?: return null
         val raw = scalar.textValue.trim().ifEmpty { return null }
         return if (EsphomeYaml.tagName(scalar) == "secret") {
             secretValue(project, vf, raw)
         } else {
-            EsphomeSubstitutions.getInstance(project).expandText(raw, vf).trim().ifEmpty { null }
+            subs.expand(raw, defs).trim().ifEmpty { null }
         }
     }
 
