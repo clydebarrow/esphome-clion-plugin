@@ -7,6 +7,8 @@ release.
 
 ## [Unreleased]
 
+## [0.12.0]
+
 ### Changed
 
 - **ESPHome Device** window: it now **auto-reconnects** on a backing-off schedule
