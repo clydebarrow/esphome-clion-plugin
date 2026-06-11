@@ -8,8 +8,11 @@ class EsphomeRunOptions : RunConfigurationOptions() {
     /** Absolute path to the ESPHome YAML config the command runs on. */
     var configPath: String? by string("")
 
-    /** The ESPHome sub-command: `compile`, `run`, `upload`, `logs`, `clean`. */
-    var command: String? by string(EsphomeCommand.COMPILE.id)
+    /**
+     * The ESPHome sub-command: `compile`, `run`, `upload`, `logs`, `clean`.
+     * New configurations default to `run` (compile + upload + logs).
+     */
+    var command: String? by string(EsphomeCommand.RUN.id)
 
     /** Where ESPHome runs: [EsphomeBackend.LOCAL] or [EsphomeBackend.DOCKER]. */
     var backend: String? by string(EsphomeSettings.DEFAULT_BACKEND)
