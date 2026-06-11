@@ -31,12 +31,32 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v5
 
+      # Untrusted input (the dispatch field) is read from env and validated
+      # against a SemVer-ish pattern, never spliced into the run script via
+      # ${{ }} — so a crafted version (spaces/newlines) can't inject extra
+      # Gradle args or shell commands, and a cleared field is rejected rather
+      # than producing an empty plugin version. Mirrors release.yml.
+      - name: Resolve version
+        id: version
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          set -euo pipefail
+          VERSION="$INPUT_VERSION"
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]]; then
+            echo "Invalid version '$VERSION'; expected SemVer like 1.2.3 or 1.2.3-rc1." >&2
+            exit 1
+          fi
+          printf 'version=%s\n' "$VERSION" >> "$GITHUB_OUTPUT"
+
       # Fails on real compatibility problems / invalid plugin per the
       # pluginVerification.failureLevel configured in plugin/build.gradle.kts.
+      # The version is the regex-validated output above (no spaces/newlines/
+      # quotes possible), so it's safe to reference in the run script.
       - name: Verify plugin compatibility
         run: >-
           ./gradlew :plugin:verifyPlugin
-          -PpluginVersion=${{ github.event.inputs.version }}
+          -PpluginVersion=${{ steps.version.outputs.version }}
           --stacktrace
 
       # Keep the verifier reports so a failure can be inspected without re-running.
