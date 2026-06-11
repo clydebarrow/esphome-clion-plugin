@@ -2,6 +2,7 @@ package io.esphome.clion.services
 
 import com.intellij.execution.RunManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiManager
 import io.esphome.clion.psi.EsphomeYaml
@@ -43,11 +44,17 @@ object EsphomeConfigRoots {
         val configRoots = roots.filter { isStandalone(psiManager, it) }
         if (configRoots.isEmpty()) return null
         val runConfigPath = runConfigPath(project)
-        return configRoots.firstOrNull { it.path == runConfigPath }
+        // pathsEqual normalizes separators/case, since configPath comes from the run
+        // config editor as a presentableUrl (native separators), not VirtualFile.path.
+        return runConfigPath?.let { wanted -> configRoots.firstOrNull { FileUtil.pathsEqual(it.path, wanted) } }
             ?: configRoots.minByOrNull { it.path }
     }
 
-    /** Whether [file] is the top-level config for itself (nothing includes it). */
+    /**
+     * Whether [file] is itself the top-level config: a standalone config
+     * (`esphome:`/`packages:`) that nothing `!include`s. False for an orphan
+     * fragment, which has no includer but isn't a config either.
+     */
     fun isTopLevel(project: Project, file: VirtualFile): Boolean =
         effectiveRoot(project, file) == file
 
