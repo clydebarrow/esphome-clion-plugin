@@ -107,6 +107,19 @@ class EsphomeCommandLinesTest {
     }
 
     @Test
+    fun `parses lib dirs from sdl2-config --libs output`() {
+        assertEquals(
+            listOf("/opt/homebrew/lib"),
+            EsphomeCommandLines.parseLibDirs("-L/opt/homebrew/lib -lSDL2"),
+        )
+        assertEquals(
+            listOf("/opt/homebrew/lib", "/usr/local/lib"),
+            EsphomeCommandLines.parseLibDirs("-L/opt/homebrew/lib -L/usr/local/lib -Wl,-rpath,/x -lSDL2"),
+        )
+        assertEquals(emptyList<String>(), EsphomeCommandLines.parseLibDirs("-lSDL2"))
+    }
+
+    @Test
     fun `network vs serial device detection`() {
         assertEquals(true, EsphomeCommandLines.isNetworkDevice("living-room.local"))
         assertEquals(true, EsphomeCommandLines.isNetworkDevice("10.0.0.5"))

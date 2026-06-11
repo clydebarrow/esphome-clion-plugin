@@ -22,6 +22,10 @@ release.
 
 ### Changed
 
+- **Host / SDL builds** now work from a GUI-launched IDE: when `sdl2-config` is
+  found (e.g. Homebrew's `/opt/homebrew/bin`), its directory is added to `PATH`
+  and the SDL library dirs it reports (`sdl2-config --libs`) are added to
+  `DYLD_LIBRARY_PATH` / `LD_LIBRARY_PATH` for local/venv runs.
 - `run` / `upload` / `logs` over the **network** (an OTA host/IP/`.local`
   device) now run under a pseudo-terminal automatically, so ESPHome emits
   ANSI-colored logs and in-place progress. Serial operations are unchanged
