@@ -9,6 +9,7 @@ import com.intellij.openapi.fileEditor.FileEditorManagerListener
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.IndexNotReadyException
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextField
@@ -84,11 +85,33 @@ class EsphomeApiPanel(private val project: Project) :
         if (connection != null) return
         if (hostField.text.isBlank() && derived.host != null) hostField.text = hostPort(derived.host, derived.port)
         if (keyField.text.isBlank() && derived.encryptionKey != null) keyField.text = derived.encryptionKey
+        updateReadyStatus(derived)
+    }
+
+    /**
+     * Pre-fill host (and key, when the config has one) from [file] on explicit
+     * request — the context-menu action — overriding the current host. Leaves an
+     * already-pasted key in place when the config has none, and never touches a
+     * live connection (the fields apply on the next Connect).
+     */
+    fun prefill(file: VirtualFile) {
+        if (disposed) return
+        val derived = try {
+            EsphomeApiTarget.forFile(project, file)
+        } catch (_: IndexNotReadyException) {
+            return
+        }
+        target = derived
+        derived.host?.let { hostField.text = hostPort(it, derived.port) }
+        derived.encryptionKey?.let { keyField.text = it }
+        if (connection == null) updateReadyStatus(derived)
+    }
+
+    private fun updateReadyStatus(derived: EsphomeApiTarget.Target) {
         val device = derived.deviceName ?: "device"
         statusLabel.text = when {
             !derived.hasApi -> "No api: in the open config — enter host:port to connect."
-            derived.encryptionKey != null -> "Ready — Connect to $device (encrypted)."
-            keyField.text.isNotBlank() -> "Ready — Connect to $device (encrypted)."
+            derived.encryptionKey != null || keyField.text.isNotBlank() -> "Ready — Connect to $device (encrypted)."
             else -> "Ready — Connect to $device (no key found; paste one if it's encrypted)."
         }
     }

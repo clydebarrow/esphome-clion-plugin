@@ -14,4 +14,9 @@ class EsphomeApiToolWindowFactory : ToolWindowFactory, DumbAware {
         content.setDisposer(panel) // stop the connection when the content/project closes
         toolWindow.contentManager.addContent(content)
     }
+
+    companion object {
+        /** Must match the `<toolWindow id>` in plugin.xml. */
+        const val ID = "ESPHome Device"
+    }
 }

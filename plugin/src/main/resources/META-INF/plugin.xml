@@ -101,4 +101,16 @@
             icon="AllIcons.Nodes.Plugin"
             factoryClass="io.esphome.clion.api.toolwindow.EsphomeApiToolWindowFactory"/>
     </extensions>
+
+    <actions>
+        <action
+            id="io.esphome.clion.api.OpenDeviceWindow"
+            class="io.esphome.clion.api.toolwindow.EsphomeOpenDeviceWindowAction"
+            text="Open ESPHome Device Window"
+            description="Open the ESPHome Device tool window with host and key pre-filled from this config"
+            icon="AllIcons.Nodes.Plugin">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+        </action>
+    </actions>
 </idea-plugin>
