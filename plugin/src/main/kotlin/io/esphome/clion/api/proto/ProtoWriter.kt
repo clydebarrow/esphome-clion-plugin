@@ -25,6 +25,24 @@ class ProtoWriter {
         return this
     }
 
+    /** fixed32 (wire type 5), little-endian — always written (entity keys need it). */
+    fun fixed32(field: Int, value: Long): ProtoWriter {
+        tag(field, 5)
+        out.write((value and 0xFF).toInt())
+        out.write(((value ushr 8) and 0xFF).toInt())
+        out.write(((value ushr 16) and 0xFF).toInt())
+        out.write(((value ushr 24) and 0xFF).toInt())
+        return this
+    }
+
+    /** A bool field; only emitted when true (proto3 default-omit). */
+    fun bool(field: Int, value: Boolean): ProtoWriter {
+        if (!value) return this
+        tag(field, 0)
+        varintRaw(1)
+        return this
+    }
+
     fun toByteArray(): ByteArray = out.toByteArray()
 
     private fun tag(field: Int, wire: Int) = varintRaw((field.toLong() shl 3) or wire.toLong())

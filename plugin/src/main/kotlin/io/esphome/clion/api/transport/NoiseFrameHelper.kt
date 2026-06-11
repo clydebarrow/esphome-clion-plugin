@@ -63,12 +63,17 @@ class NoiseFrameHelper(
         recvCipher = CipherState(k2) // device → initiator
     }
 
+    // Encrypt + write atomically: the cipher nonce is mutable, so a UI command
+    // and the reader thread's ping response must not interleave (would corrupt
+    // the nonce sequence and break the stream).
+    private val writeLock = Any()
+
     override fun writeMessage(type: Int, payload: ByteArray) {
         val plain = ByteArray(4 + payload.size)
         plain[0] = (type ushr 8).toByte(); plain[1] = type.toByte()
         plain[2] = (payload.size ushr 8).toByte(); plain[3] = payload.size.toByte()
         payload.copyInto(plain, 4)
-        writeRawFrame(sendCipher.encrypt(plain))
+        synchronized(writeLock) { writeRawFrame(sendCipher.encrypt(plain)) }
     }
 
     override fun readMessage(): FrameHelper.Frame {

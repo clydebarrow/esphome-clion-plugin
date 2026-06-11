@@ -3,6 +3,7 @@ package io.esphome.clion.api
 import io.esphome.clion.api.proto.ApiMessages
 import io.esphome.clion.api.proto.ProtoReader
 import io.esphome.clion.api.proto.ProtoWriter
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -84,6 +85,56 @@ class ApiProtoTest {
     @Test
     fun `unknown state response is not decoded`() {
         assertEquals(null, ApiMessages.decodeState(22 /* cover */, fixed32(1, 1)))
+    }
+
+    // --- commands ---
+
+    @Test
+    fun `switch command encodes key and state, omitting a false state`() {
+        val on = ApiMessages.toggleCommand("switch", 0x0A0B0C0DL, true)!!
+        assertEquals(ApiMessages.SWITCH_COMMAND, on.first)
+        assertArrayEquals(fixed32(1, 0x0A0B0C0D) + boolf(2, true), on.second)
+        val off = ApiMessages.toggleCommand("switch", 0x0A0B0C0DL, false)!!
+        assertArrayEquals(fixed32(1, 0x0A0B0C0D), off.second) // false omitted
+    }
+
+    @Test
+    fun `light command sets has_state plus state`() {
+        val on = ApiMessages.toggleCommand("light", 7L, true)!!
+        assertEquals(ApiMessages.LIGHT_COMMAND, on.first)
+        assertArrayEquals(fixed32(1, 7) + boolf(2, true) + boolf(3, true), on.second)
+        // off: has_state true, state omitted (false)
+        assertArrayEquals(fixed32(1, 7) + boolf(2, true), ApiMessages.toggleCommand("light", 7L, false)!!.second)
+    }
+
+    @Test
+    fun `button command is just the key`() {
+        val (type, payload) = ApiMessages.buttonCommand(9L)
+        assertEquals(ApiMessages.BUTTON_COMMAND, type)
+        assertArrayEquals(fixed32(1, 9), payload)
+    }
+
+    @Test
+    fun `non-controllable type has no toggle command`() {
+        assertEquals(null, ApiMessages.toggleCommand("sensor", 1L, true))
+    }
+
+    // --- state active flag + device class ---
+
+    @Test
+    fun `state carries the on-off flag for toggleables`() {
+        assertEquals(true, ApiMessages.decodeState(26, fixed32(1, 1) + boolf(2, true))!!.active) // switch
+        assertEquals(false, ApiMessages.decodeState(21, fixed32(1, 1) + boolf(2, false))!!.active) // binary
+        assertEquals(null, ApiMessages.decodeState(21, fixed32(1, 1) + boolf(3, true))!!.active) // missing
+        assertEquals(null, ApiMessages.decodeState(25, fixed32(1, 1) + floatf(2, 1f))!!.active) // sensor
+    }
+
+    @Test
+    fun `entity decodes device class for icon choice`() {
+        val sensor = ApiMessages.decodeEntity(16, str(1, "t") + fixed32(2, 1) + str(3, "Temp") + str(9, "temperature"))
+        assertEquals("temperature", sensor.deviceClass)
+        val binary = ApiMessages.decodeEntity(12, str(1, "m") + fixed32(2, 2) + str(3, "Motion") + str(5, "motion"))
+        assertEquals("motion", binary.deviceClass)
     }
 
     @Test
