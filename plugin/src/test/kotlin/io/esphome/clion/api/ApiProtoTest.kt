@@ -130,6 +130,14 @@ class ApiProtoTest {
     }
 
     @Test
+    fun `sensor entity decodes accuracy_decimals and state carries the raw number`() {
+        val e = ApiMessages.decodeEntity(16, str(1, "t") + fixed32(2, 1) + str(3, "Temp") + str(6, "°C") + varintf(7, 2))
+        assertEquals(2, e.accuracyDecimals)
+        val s = ApiMessages.decodeState(25, fixed32(1, 1) + floatf(2, 23.456f))!!
+        assertEquals(23.456f, s.number!!, 1e-4f)
+    }
+
+    @Test
     fun `fan state decodes on-off and ignores oscillating at field 3`() {
         // FanStateResponse: key, state(2 bool), oscillating(3 bool) — not missing_state.
         val s = ApiMessages.decodeState(23, fixed32(1, 1) + boolf(2, true) + boolf(3, true))!!

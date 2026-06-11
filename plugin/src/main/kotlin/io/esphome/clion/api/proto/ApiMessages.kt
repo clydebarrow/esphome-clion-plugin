@@ -15,6 +15,8 @@ data class ApiEntity(
     val unit: String,
     /** Home-Assistant device class (e.g. `temperature`, `motion`), for icon choice. */
     val deviceClass: String = "",
+    /** Sensor decimal places to show; -1 when unknown/not a sensor. */
+    val accuracyDecimals: Int = -1,
 )
 
 /** A single live state update (`*StateResponse`), already formatted for display. */
@@ -23,6 +25,8 @@ data class ApiState(
     val display: String,
     /** On/off for toggleable entities (switch/light/fan/binary), else null. */
     val active: Boolean? = null,
+    /** Raw numeric value for sensor/number states, so the row can apply accuracy. */
+    val number: Float? = null,
 )
 
 /** Brief device identity from `DeviceInfoResponse`. */
@@ -132,6 +136,7 @@ object ApiMessages {
         var name = ""
         var unit = ""
         var deviceClass = ""
+        var accuracyDecimals = -1
         while (r.hasMore()) {
             val tag = r.readTag()
             val field = r.fieldOf(tag)
@@ -141,13 +146,14 @@ object ApiMessages {
                 field == 2 && wire == 5 -> key = r.readFixed32()
                 field == 3 && wire == 2 -> name = r.readString()
                 field == 6 && wire == 2 && listId == SENSOR_LIST -> unit = r.readString()
+                field == 7 && wire == 0 && listId == SENSOR_LIST -> accuracyDecimals = r.readVarint().toInt()
                 // device_class lives at different fields per type; read the ones that drive icons.
                 field == 9 && wire == 2 && listId == SENSOR_LIST -> deviceClass = r.readString()
                 field == 5 && wire == 2 && listId == BINARY_SENSOR_LIST -> deviceClass = r.readString()
                 else -> r.skip(wire)
             }
         }
-        return ApiEntity(key, ENTITY_TYPES[listId] ?: "unknown", name.ifEmpty { objectId }, unit, deviceClass)
+        return ApiEntity(key, ENTITY_TYPES[listId] ?: "unknown", name.ifEmpty { objectId }, unit, deviceClass, accuracyDecimals)
     }
 
     /** Decode a state message into a display string, or null for types we don't render. */
@@ -186,7 +192,8 @@ object ApiMessages {
             LIGHT -> bool
             else -> null
         }
-        return ApiState(key, display, active)
+        val number: Float? = if (kind == FLOAT && !missing) f else null
+        return ApiState(key, display, active, number)
     }
 
     fun decodeHelloResponse(payload: ByteArray): String {
