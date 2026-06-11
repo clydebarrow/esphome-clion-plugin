@@ -16,6 +16,14 @@ release.
   APIs — the Noise handshake uses only the bundled JDK crypto, no extra
   dependency.
 
+### Changed
+
+- `run` / `upload` / `logs` over the **network** (an OTA host/IP/`.local`
+  device) now run under a pseudo-terminal automatically, so ESPHome emits
+  ANSI-colored logs and in-place progress. Serial operations are unchanged
+  (a PTY there buffers output); the per-config "Emulate a terminal" still forces
+  it.
+
 ### Fixed
 
 - A shared package (a file with an `esphome:` block that is `!include`d by

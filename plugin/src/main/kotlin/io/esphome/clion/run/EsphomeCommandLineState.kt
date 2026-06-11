@@ -21,11 +21,18 @@ class EsphomeCommandLineState(
 
     override fun startProcess(): ProcessHandler {
         val base = buildCommandLine()
-        // Optionally run under a pseudo-terminal: ESPHome/PlatformIO then think
-        // they have a TTY and overwrite one progress line with `\r` (rendered in
-        // place) instead of scrolling. It suits OTA but interferes with serial
-        // upload/logs, so it's opt-in per run configuration.
-        val commandLine = if (configuration.emulateTerminal) PtyCommandLine(base).withConsoleMode(false) else base
+        // Run under a pseudo-terminal when it helps: ESPHome/PlatformIO then think
+        // they have a TTY and emit ANSI-colored logs and in-place `\r` progress.
+        // Force it for device operations over the network (OTA upload/logs), where
+        // there's no downside — but never for serial, where a PTY buffers/empties
+        // the output. The per-config "Emulate a terminal" still forces it too.
+        val networkOp = configuration.command.usesDevice &&
+            EsphomeCommandLines.isNetworkDevice(configuration.device)
+        val commandLine = if (configuration.emulateTerminal || networkOp) {
+            PtyCommandLine(base).withConsoleMode(false)
+        } else {
+            base
+        }
         val handler = KillableColoredProcessHandler(commandLine)
         ProcessTerminatedListener.attach(handler)
         return handler
@@ -120,6 +127,19 @@ object EsphomeCommandLines {
         }
         return commandLine.finalize(configFile.parentFile)
     }
+
+    /**
+     * Whether [device] is a network target (OTA: hostname/IP/`name.local`) rather
+     * than a serial port. Blank is treated as not-network — ESPHome may pick a
+     * serial port — so a PTY isn't forced where it could break serial.
+     */
+    fun isNetworkDevice(device: String?): Boolean {
+        val d = device?.trim().orEmpty()
+        return d.isNotEmpty() && !SERIAL_PORT.matches(d)
+    }
+
+    // Serial ports: /dev/ttyUSB0, /dev/cu.usbserial-…, COM3, ttyACM0, cu.…
+    private val SERIAL_PORT = Regex("(?i)^(COM\\d+|/dev/.*|tty.*|cu\\..*)$")
 
     /** `run --rm -v <dir>:/config [-v <cache>:/cache] -w /config <image> <sub> <target>`. */
     private fun dockerRun(
