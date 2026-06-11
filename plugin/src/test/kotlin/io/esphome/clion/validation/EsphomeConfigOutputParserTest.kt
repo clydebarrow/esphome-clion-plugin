@@ -46,6 +46,38 @@ class EsphomeConfigOutputParserTest {
     }
 
     @Test
+    fun `parses a strapping-pin warning anchored at the pin`() {
+        val out = """
+            INFO Reading configuration w-2.16.yaml...
+            WARNING GPIO46 is a strapping PIN and should only be used for I/O with care.
+            INFO Configuration is valid!
+        """.trimIndent()
+        val warnings = EsphomeConfigOutputParser.parseWarnings(out, "w-2.16.yaml")
+        assertEquals(1, warnings.size)
+        assertEquals(EsphomeSeverity.WARNING, warnings[0].severity)
+        assertEquals("GPIO46", warnings[0].searchToken)
+        assertTrue(warnings[0].message.contains("strapping PIN"))
+    }
+
+    @Test
+    fun `drops tokenless warnings and dedupes repeats`() {
+        val out = """
+            WARNING A generic advisory with nothing to locate.
+            WARNING GPIO46 is a strapping PIN.
+            WARNING GPIO46 is a strapping PIN.
+        """.trimIndent()
+        val warnings = EsphomeConfigOutputParser.parseWarnings(out, "x.yaml")
+        assertEquals(1, warnings.size)
+        assertEquals("GPIO46", warnings[0].searchToken)
+    }
+
+    @Test
+    fun `uses a quoted name as the warning token`() {
+        val warnings = EsphomeConfigOutputParser.parseWarnings("WARNING Component 'my_sensor' is deprecated.", "x.yaml")
+        assertEquals("my_sensor", warnings.single().searchToken)
+    }
+
+    @Test
     fun `ignores the config dump paragraph and info lines`() {
         val diagnostics = EsphomeConfigOutputParser.parse(realOutput, "bad.yaml")
         // platform/pin/temperature are dump lines, not errors.

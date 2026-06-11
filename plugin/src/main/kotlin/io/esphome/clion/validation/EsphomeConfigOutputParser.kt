@@ -14,7 +14,11 @@ data class EsphomeDiagnostic(
     val offendingKey: String?,
     /** A literal token to locate in the file when there is no key/line (e.g. a bad platform value). */
     val searchToken: String? = null,
+    /** Highlight severity: errors fail the build; warnings are advisory. */
+    val severity: EsphomeSeverity = EsphomeSeverity.ERROR,
 )
+
+enum class EsphomeSeverity { ERROR, WARNING }
 
 /**
  * Parses the textual output of `esphome config <file>`.
@@ -42,6 +46,31 @@ object EsphomeConfigOutputParser {
     private val HEADER = Regex("""^(.+):\s+\[source\s+(.+):(\d+)]\s*$""")
     private val YAML_KEY = Regex("""^[\w.\-]+:(\s.*)?$""")
     private val QUOTED = Regex("""'([^']+)'""")
+    private val WARNING_LINE = Regex("""^WARNING\s+(.+)$""")
+    private val GPIO = Regex("""\bGPIO\d+\b""")
+
+    /**
+     * `WARNING …` lines from `esphome config` (e.g. a strapping-pin advisory).
+     * Unlike errors these appear even on a *valid* config and carry no source
+     * line, so each is anchored by a token located in the file — a pin like
+     * `GPIO46` or a quoted name. Warnings without a locatable token are dropped
+     * (they're still visible in the run console). Safe to run on any output: it
+     * only looks at `WARNING` lines, never the echoed config dump.
+     */
+    fun parseWarnings(output: String, targetFile: String): List<EsphomeDiagnostic> =
+        output.lineSequence()
+            .mapNotNull { WARNING_LINE.matchEntire(it.trim())?.groupValues?.get(1)?.trim() }
+            .distinct()
+            .mapNotNull { message ->
+                val token = warningToken(message) ?: return@mapNotNull null
+                EsphomeDiagnostic(targetFile, 0, message, null, token, EsphomeSeverity.WARNING)
+            }
+            .toList()
+
+    /** A token to locate a warning: a pin (`GPIO46`), else a quoted name. */
+    private fun warningToken(message: String): String? =
+        GPIO.find(message)?.value
+            ?: QUOTED.find(message)?.groupValues?.get(1)?.substringAfterLast('.')?.takeIf { it.isNotBlank() }
 
     /**
      * @param includeTopLevelErrors whether to attribute headerless top-level

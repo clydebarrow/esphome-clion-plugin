@@ -7,6 +7,13 @@ release.
 
 ## [Unreleased]
 
+### Added
+
+- Config **warnings** from `esphome config` (e.g. a strapping-pin advisory) are
+  now shown in the editor as warnings, anchored at the relevant token (the pin,
+  or a quoted name) — not just errors. Warnings appear even when the config is
+  valid.
+
 ## [0.10.1]
 
 ### Fixed
