@@ -1,0 +1,49 @@
+# Runs the IntelliJ Plugin Verifier (`:plugin:verifyPlugin`) against the
+# recommended IDE range to catch binary-compatibility problems — the kind that
+# blocked a Marketplace publish before (e.g. the IconUtil.colorize 2025.1 break).
+#
+# This is intentionally NOT part of the release gate: it downloads the
+# recommended IDEs and is slow, and the Marketplace re-verifies on publish.
+# Trigger it manually from the Actions tab when you've touched platform APIs and
+# want to confirm compatibility before tagging a release.
+name: Verify plugin compatibility
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Plugin version to patch into the build (not published)"
+        required: false
+        default: "0.0.0-dev"
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      # Fails on real compatibility problems / invalid plugin per the
+      # pluginVerification.failureLevel configured in plugin/build.gradle.kts.
+      - name: Verify plugin compatibility
+        run: >-
+          ./gradlew :plugin:verifyPlugin
+          -PpluginVersion=${{ github.event.inputs.version }}
+          --stacktrace
+
+      # Keep the verifier reports so a failure can be inspected without re-running.
+      - name: Upload verification reports
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: plugin-verifier-reports
+          path: plugin/build/reports/pluginVerifier/
+          if-no-files-found: ignore

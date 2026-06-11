@@ -75,15 +75,11 @@ jobs:
           -PpluginVersion=${{ steps.version.outputs.version }}
           --stacktrace
 
-      # Gate the release on binary compatibility across the supported IDE range
-      # (downloads the recommended IDEs). Fails on real compatibility problems,
-      # so a build like the IconUtil.colorize 2025.1 break can't be published.
-      - name: Verify plugin compatibility
-        run: >-
-          ./gradlew :plugin:verifyPlugin
-          -PpluginVersion=${{ steps.version.outputs.version }}
-          --stacktrace
-
+      # Binary-compatibility verification (`./gradlew :plugin:verifyPlugin`) is
+      # deliberately NOT gated here: it downloads the recommended IDEs and is
+      # slow, and the JetBrains Marketplace re-runs it on publish anyway.
+      # Compatibility is best checked when an API is first used; run the
+      # "Verify plugin compatibility" workflow on demand when that's in doubt.
       - name: Locate distribution
         id: dist
         run: |
