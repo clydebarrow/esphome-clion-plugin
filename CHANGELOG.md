@@ -7,6 +7,14 @@ release.
 
 ## [Unreleased]
 
+### Added
+
+- **ESPHome Device** tool window: connect to a running device over the native
+  API and watch its entities (sensors, switches, lights, …) with live-updating
+  state. Host/port are pre-filled from the open config's `api:`/address, with a
+  manual override. Plaintext API for now; encrypted (`encryption:`) support is
+  coming next.
+
 ### Fixed
 
 - `id: !extend X` / `id: !remove X` in a `packages:`-based config now link to the
