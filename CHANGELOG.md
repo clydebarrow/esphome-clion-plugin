@@ -9,6 +9,11 @@ release.
 
 ### Changed
 
+- **ESPHome Device** window: it now **auto-reconnects** on a backing-off schedule
+  when the connection drops (e.g. the device reboots), and **auto-connects** when
+  you open it from the config's context menu and a host is known. The Connect
+  button moved to the left of the Host field, and the host/key fields are no
+  longer stretched across the whole tool window.
 - The **default backend** setting (Settings | Tools | ESPHome) now offers
   **Managed venv** alongside Local and Docker, so a provisioned venv can be the
   default for new run configurations and config validation — it was previously
