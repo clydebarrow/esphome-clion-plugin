@@ -1,6 +1,12 @@
 # Roadmap: includes, project model, and ID navigation
 
-Status: Phases 1–5 done (2026-06-09).
+**Status: complete — kept as a design record.** Phases 1–5 shipped 2026-06-09.
+A later refinement: a file is treated as *top-level* only when nothing
+`!include`s it (so a shared package with an `esphome:` block is a package, not a
+standalone config), and the ambiguous root of a shared package is disambiguated
+by the selected run configuration — see `EsphomeConfigRoots`. Features built on
+this model (run configurations, the live **ESPHome Device** tool window) are
+documented in the [README](../README.md), not here.
 
 The objective: open a top-level ESPHome device YAML and treat its whole
 `!include` graph as a navigable unit — resolve included files, and navigate via

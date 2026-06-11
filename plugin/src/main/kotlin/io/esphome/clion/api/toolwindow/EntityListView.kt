@@ -1,36 +1,40 @@
 package io.esphome.clion.api.toolwindow
 
-import com.intellij.ui.components.JBLabel
-import com.intellij.ui.components.panels.VerticalLayout
+import com.intellij.ui.components.JBPanelWithEmptyText
 import com.intellij.util.ui.JBUI
-import com.intellij.util.ui.UIUtil
 import io.esphome.clion.api.proto.ApiEntity
 import io.esphome.clion.api.proto.ApiState
-import javax.swing.JComponent
-import javax.swing.JPanel
+import java.awt.Dimension
+import java.awt.FlowLayout
+import java.awt.Rectangle
+import javax.swing.Scrollable
 
 /**
- * The device's entities as a vertical, HA-card-like list grouped by type, with
- * an icon and a control or state per row. Rebuilt once the entity list arrives;
- * live states update individual rows by key. All mutators run on the EDT.
+ * The device's entities as fixed-width cards that flow into multiple columns and
+ * reflow on resize (good for a wide, landscape tool window). Cards are sorted by
+ * type then name so like entities cluster. Live states update cards by key; all
+ * mutators run on the EDT.
  */
-class EntityListView : JPanel(VerticalLayout(0)) {
+class EntityListView :
+    JBPanelWithEmptyText(WrapLayout(FlowLayout.LEFT, JBUI.scale(6), JBUI.scale(4))),
+    Scrollable {
 
     private val rows = HashMap<Long, EntityRow>()
 
-    /** Where a row's control sends its command. */
+    /** Where a card's control sends its command. */
     var commandSink: CommandSink = CommandSink { _, _ -> }
 
-    /** Rebuild the grouped rows from the full entity list. */
+    init {
+        border = JBUI.Borders.empty(4)
+        emptyText.text = "Not connected"
+    }
+
     fun setEntities(entities: List<ApiEntity>) {
         clear()
-        entities.groupBy { it.type }.toSortedMap().forEach { (type, group) ->
-            add(sectionHeader(type, group.size))
-            group.sortedBy { it.name.lowercase() }.forEach { entity ->
-                val row = EntityRow(entity, commandSink)
-                rows[entity.key] = row
-                add(row)
-            }
+        entities.sortedWith(compareBy({ it.type }, { it.name.lowercase() })).forEach { entity ->
+            val row = EntityRow(entity, commandSink)
+            rows[entity.key] = row
+            add(row)
         }
         revalidate()
         repaint()
@@ -47,21 +51,10 @@ class EntityListView : JPanel(VerticalLayout(0)) {
         repaint()
     }
 
-    private fun sectionHeader(type: String, count: Int): JComponent =
-        JBLabel("${displayName(type)} ($count)").apply {
-            font = JBUI.Fonts.label().asBold()
-            foreground = UIUtil.getContextHelpForeground()
-            border = JBUI.Borders.empty(10, 8, 3, 8)
-        }
-
-    /** `binary_sensor` → "Binary sensors", `switch` → "Switches". */
-    private fun displayName(type: String): String {
-        val label = type.split("_")
-            .mapIndexed { i, w -> if (i == 0) w.replaceFirstChar(Char::uppercase) else w }
-            .joinToString(" ")
-        val suffix = if (label.endsWith("s") || label.endsWith("x") || label.endsWith("z") ||
-            label.endsWith("ch") || label.endsWith("sh")
-        ) "es" else "s"
-        return label + suffix
-    }
+    // Track the viewport width so WrapLayout wraps cards; grow taller and scroll.
+    override fun getPreferredScrollableViewportSize(): Dimension = preferredSize
+    override fun getScrollableUnitIncrement(r: Rectangle, orientation: Int, direction: Int): Int = JBUI.scale(16)
+    override fun getScrollableBlockIncrement(r: Rectangle, orientation: Int, direction: Int): Int = r.height
+    override fun getScrollableTracksViewportWidth(): Boolean = true
+    override fun getScrollableTracksViewportHeight(): Boolean = false
 }

@@ -7,6 +7,7 @@ import com.intellij.util.ui.UIUtil
 import io.esphome.clion.api.proto.ApiEntity
 import io.esphome.clion.api.proto.ApiMessages
 import java.awt.BorderLayout
+import java.awt.Dimension
 import javax.swing.JButton
 import javax.swing.JComponent
 import javax.swing.JPanel
@@ -18,15 +19,18 @@ fun interface CommandSink {
 }
 
 /**
- * One entity row: `[icon] name … [control|state]`. Switch/light/fan get an
- * on-off toggle, a button gets a Press button, everything else a right-aligned
- * state label. Live state updates flow through [updateState].
+ * One entity as a fixed-width card — `[icon] name … [control|state]` — so cards
+ * flow into multiple columns on a wide window. Switch/light/fan get an on-off
+ * toggle, a button gets a Press button, everything else a state label.
+ * Live state flows through [updateState]; a binary sensor's icon tracks on/off.
  */
 class EntityRow(
     private val entity: ApiEntity,
     private val commands: CommandSink,
 ) : JPanel(BorderLayout(JBUI.scale(8), 0)) {
 
+    private val iconLabel = JBLabel(EntityIcons.iconFor(entity.type, entity.deviceClass))
+    private val nameLabel = JBLabel(entity.name).apply { toolTipText = entity.name }
     private val stateLabel = JBLabel("—", SwingConstants.RIGHT)
     private var toggle: OnOffButton? = null
     private var updatingProgrammatically = false
@@ -34,10 +38,16 @@ class EntityRow(
     init {
         isOpaque = false
         border = JBUI.Borders.empty(3, 8)
-        add(JBLabel(EntityIcons.iconFor(entity.type, entity.deviceClass)), BorderLayout.WEST)
-        add(JBLabel(entity.name), BorderLayout.CENTER)
+        add(iconLabel, BorderLayout.WEST)
+        add(nameLabel, BorderLayout.CENTER)
         add(buildControl(), BorderLayout.EAST)
     }
+
+    // Fixed width so cards tile in columns; natural height.
+    override fun getPreferredSize(): Dimension =
+        Dimension(JBUI.scale(CARD_WIDTH), super.getPreferredSize().height)
+
+    override fun getMaximumSize(): Dimension = preferredSize
 
     private fun buildControl(): JComponent = when {
         entity.type == "button" -> JButton("Press").apply {
@@ -55,8 +65,9 @@ class EntityRow(
         else -> stateLabel.apply { foreground = UIUtil.getContextHelpForeground() }
     }
 
-    /** Reflect a live state: move the toggle (without re-sending) and/or set the label. */
+    /** Reflect a live state: icon (binary), toggle (without re-sending), and/or label. */
     fun updateState(display: String, active: Boolean?) {
+        iconLabel.icon = EntityIcons.iconFor(entity.type, entity.deviceClass, active)
         toggle?.let { t ->
             if (active != null) {
                 updatingProgrammatically = true
@@ -68,5 +79,9 @@ class EntityRow(
             }
         }
         stateLabel.text = if (entity.unit.isNotEmpty() && display != "—") "$display ${entity.unit}" else display
+    }
+
+    private companion object {
+        const val CARD_WIDTH = 240
     }
 }

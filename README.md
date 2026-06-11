@@ -66,6 +66,10 @@ isn't on PATH).
 - **Validation** — runs the real `esphome config` in the background
   (`ExternalAnnotator`) and maps reported errors to the offending lines.
 - **Compile, run & flash** — run configurations that invoke ESPHome (see below).
+- **Live device window** — connect to a running device over the native API and
+  watch its entities update live, with per-entity icons and on-off toggles for
+  switches/lights/fans and a Press button for buttons (see below). Plaintext and
+  **encrypted** (`encryption:`) APIs, no extra dependency.
 - **Full catalog** — `vendorCatalog` downloads all component bodies for a pinned
   ESPHome release into generated resources; a small committed subset is the
   offline fallback.
@@ -98,6 +102,22 @@ command with output in the Run console (stop / re-run included).
 The **default backend** (in the same settings page) is what new run
 configurations start from — and what background validation uses, so the editor's
 errors come from the very same ESPHome you build with.
+
+## Live device window
+
+The **ESPHome Device** tool window (bottom) connects to a running device over
+the native API and shows its entities — grouped, with a per-entity icon — and
+updates them live. Right-click a config → **Open ESPHome Device Window** (or
+open the tool window directly); host/port and the encryption key are pre-filled
+from the config (`api:`, `wifi:`/`ethernet:` address, `!secret`-resolved), and a
+**Key** field lets you paste/override the key.
+
+- **Transport** — plaintext, or **encrypted** when the device's `api:` has an
+  `encryption: key:` (Noise `NNpsk0`, built on the bundled JDK crypto — no extra
+  dependency). The connecting status shows which is in use.
+- **Control** — on-off toggles for switches, lights and fans, and a **Press**
+  button for buttons; sensors and the rest are read-only and update live. A
+  binary sensor's icon is a filled circle when on, an outline when off.
 
 ## Toolchain & build target
 

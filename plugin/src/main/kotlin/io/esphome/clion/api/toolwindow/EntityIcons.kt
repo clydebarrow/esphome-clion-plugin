@@ -13,15 +13,23 @@ import javax.swing.Icon
  */
 object EntityIcons {
 
-    fun iconFor(type: String, deviceClass: String): Icon {
-        val name = DEVICE_CLASS_ICONS[deviceClass] ?: TYPE_ICONS[type] ?: FALLBACK
+    /**
+     * Icon for an entity, recolored to the IDE label foreground. A binary_sensor
+     * shows a filled circle when on and an unfilled circle when off ([active]);
+     * everything else picks by device class then type.
+     */
+    fun iconFor(type: String, deviceClass: String, active: Boolean? = null): Icon {
+        val name = when (type) {
+            "binary_sensor" -> if (active == true) "circle" else "circle-outline"
+            else -> DEVICE_CLASS_ICONS[deviceClass] ?: TYPE_ICONS[type] ?: FALLBACK
+        }
         val base = IconLoader.getIcon("/icons/esphome/$name.svg", EntityIcons::class.java)
         return IconUtil.colorize(base, UIUtil.getLabelForeground())
     }
 
-    /** Every bundled icon name referenced by the maps — for a resource-presence test. */
+    /** Every bundled icon name referenced — for a resource-presence test. */
     internal fun iconResourceNames(): Set<String> =
-        TYPE_ICONS.values.toSet() + DEVICE_CLASS_ICONS.values.toSet() + FALLBACK
+        TYPE_ICONS.values.toSet() + DEVICE_CLASS_ICONS.values.toSet() + setOf(FALLBACK, "circle", "circle-outline")
 
     private const val FALLBACK = "shape-outline"
 
