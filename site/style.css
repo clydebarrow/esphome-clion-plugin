@@ -176,6 +176,11 @@ section { scroll-margin-top: 70px; }
 .shot figcaption { text-align: center; color: var(--muted); font-size: .85rem; margin-top: .7rem; }
 .shot--wide { max-width: 540px; margin: 0 auto 2.5rem; }
 
+/* live device window highlight */
+.device { padding: clamp(3rem, 6vw, 5rem) clamp(1rem, 4vw, 3rem); background: var(--bg-soft); border-block: 1px solid var(--line); }
+.device__eyebrow { text-align: center; }
+.shot--device { max-width: 1040px; margin: 1.5rem auto 0; }
+
 /* ---------- run section ---------- */
 .run { padding: clamp(3.5rem, 7vw, 6rem) clamp(1rem, 4vw, 3rem); }
 .run__grid { display: grid; grid-template-columns: 1fr 1.3fr; gap: clamp(2rem, 4vw, 3.5rem); max-width: 1080px; margin: 0 auto; }
