@@ -13,7 +13,6 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextField
-import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.JBUI
 import io.esphome.clion.api.EsphomeApiConnection
 import io.esphome.clion.api.EsphomeApiTarget
@@ -33,7 +32,8 @@ import javax.swing.JPanel
 class EsphomeApiPanel(private val project: Project) :
     JPanel(BorderLayout()), Disposable, EsphomeApiConnection.Listener {
 
-    private val model = EntityTableModel()
+    private val entityView = EntityListView()
+    private val pendingEntities = mutableListOf<ApiEntity>()
     private val hostField = JBTextField()
     private val keyField = JBTextField().apply { emptyText.text = "blank = plaintext; base64 key for encrypted api:" }
     private val connectButton = JButton("Connect")
@@ -56,9 +56,9 @@ class EsphomeApiPanel(private val project: Project) :
             add(controls, BorderLayout.NORTH)
             add(statusLabel.apply { border = JBUI.Borders.emptyTop(6) }, BorderLayout.SOUTH)
         }
-        val table = JBTable(model).apply { fillsViewportHeight = true }
+        entityView.commandSink = CommandSink { type, payload -> connection?.send(type, payload) }
         add(header, BorderLayout.NORTH)
-        add(JBScrollPane(table), BorderLayout.CENTER)
+        add(JBScrollPane(entityView), BorderLayout.CENTER)
 
         connectButton.addActionListener { if (connection == null) connect() else connection?.stop() }
         hostField.addActionListener { if (connection == null) connect() }
@@ -131,7 +131,8 @@ class EsphomeApiPanel(private val project: Project) :
             return
         }
         val (host, port) = parseHostPort(raw)
-        model.clear()
+        pendingEntities.clear()
+        entityView.clear()
         val key = keyField.text.trim().ifEmpty { null }
         val conn = EsphomeApiConnection(host, port, target?.password, key, this)
         connection = conn
@@ -167,8 +168,9 @@ class EsphomeApiPanel(private val project: Project) :
 
     // --- EsphomeApiConnection.Listener (background thread) → EDT ---
     override fun onStatus(status: String) = ui { statusLabel.text = status }
-    override fun onEntity(entity: ApiEntity) = ui { model.putEntity(entity) }
-    override fun onState(state: ApiState) = ui { model.applyState(state) }
+    override fun onEntity(entity: ApiEntity) = ui { pendingEntities.add(entity) }
+    override fun onEntitiesComplete() = ui { entityView.setEntities(pendingEntities.toList()) }
+    override fun onState(state: ApiState) = ui { entityView.updateState(state) }
     override fun onError(message: String) = ui { statusLabel.text = "Error: $message" }
     override fun onClosed() = ui {
         connection = null

@@ -1,6 +1,7 @@
 package io.esphome.clion.api
 
 import com.intellij.openapi.diagnostic.thisLogger
+import com.intellij.util.concurrency.AppExecutorUtil
 import io.esphome.clion.api.proto.ApiMessages
 import io.esphome.clion.api.transport.FrameHelper
 import io.esphome.clion.api.transport.NoiseFrameHelper
@@ -26,6 +27,8 @@ class EsphomeApiConnection(
     interface Listener {
         fun onStatus(status: String)
         fun onEntity(entity: io.esphome.clion.api.proto.ApiEntity)
+        /** All `ListEntities*` received (before states start streaming). */
+        fun onEntitiesComplete()
         fun onState(state: io.esphome.clion.api.proto.ApiState)
         fun onError(message: String)
         fun onClosed()
@@ -33,6 +36,8 @@ class EsphomeApiConnection(
 
     private val running = AtomicBoolean(false)
     @Volatile private var socket: Socket? = null
+    /** The transport, exposed for sending commands only once streaming. */
+    @Volatile private var frameHelper: FrameHelper? = null
 
     fun start() {
         if (!running.compareAndSet(false, true)) return
@@ -42,6 +47,19 @@ class EsphomeApiConnection(
     fun stop() {
         running.set(false)
         runCatching { socket?.close() }
+    }
+
+    /**
+     * Send a command message to the device (e.g. a switch toggle). Off the EDT,
+     * and a no-op until the connection is streaming. The frame helper serializes
+     * the write against the reader thread's ping responses.
+     */
+    fun send(type: Int, payload: ByteArray) {
+        val helper = frameHelper ?: return
+        AppExecutorUtil.getAppExecutorService().execute {
+            runCatching { helper.writeMessage(type, payload) }
+                .onFailure { thisLogger().warn("Failed to send command $type to $host:$port", it) }
+        }
     }
 
     private fun run() {
@@ -63,12 +81,14 @@ class EsphomeApiConnection(
             helper.writeMessage(ApiMessages.LIST_ENTITIES_REQUEST, ApiMessages.EMPTY)
             helper.writeMessage(ApiMessages.SUBSCRIBE_STATES_REQUEST, ApiMessages.EMPTY)
 
+            frameHelper = helper // streaming: commands may now be sent
             readLoop(helper)
         } catch (e: Exception) {
             thisLogger().warn("ESPHome API connection to $host:$port failed", e)
             if (running.get()) listener.onError(describeError(e))
         } finally {
             running.set(false)
+            frameHelper = null
             runCatching { socket?.close() }
             listener.onClosed()
         }
@@ -130,7 +150,10 @@ class EsphomeApiConnection(
                     val info = ApiMessages.decodeDeviceInfo(frame.payload)
                     listener.onStatus("Connected to ${info.name} (ESPHome ${info.esphomeVersion})")
                 }
-                frame.type == ApiMessages.LIST_ENTITIES_DONE -> listener.onStatus("Subscribed — live")
+                frame.type == ApiMessages.LIST_ENTITIES_DONE -> {
+                    listener.onEntitiesComplete()
+                    listener.onStatus("Subscribed — live")
+                }
                 ApiMessages.isEntityList(frame.type) ->
                     listener.onEntity(ApiMessages.decodeEntity(frame.type, frame.payload))
                 ApiMessages.isStateResponse(frame.type) ->

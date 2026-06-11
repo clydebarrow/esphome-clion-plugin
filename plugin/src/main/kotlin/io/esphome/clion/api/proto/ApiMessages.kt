@@ -13,10 +13,21 @@ data class ApiEntity(
     val name: String,
     /** Unit of measurement, when the entity has one (sensors). */
     val unit: String,
+    /** Home-Assistant device class (e.g. `temperature`, `motion`), for icon choice. */
+    val deviceClass: String = "",
+    /** Sensor decimal places to show; -1 when unknown/not a sensor. */
+    val accuracyDecimals: Int = -1,
 )
 
 /** A single live state update (`*StateResponse`), already formatted for display. */
-data class ApiState(val key: Long, val display: String)
+data class ApiState(
+    val key: Long,
+    val display: String,
+    /** On/off for toggleable entities (switch/light/fan/binary), else null. */
+    val active: Boolean? = null,
+    /** Raw numeric value for sensor/number states, so the row can apply accuracy. */
+    val number: Float? = null,
+)
 
 /** Brief device identity from `DeviceInfoResponse`. */
 data class ApiDeviceInfo(val name: String, val esphomeVersion: String, val model: String)
@@ -55,6 +66,13 @@ object ApiMessages {
     )
 
     private const val SENSOR_LIST = 16
+    private const val BINARY_SENSOR_LIST = 12
+
+    // Command messages (UI → device).
+    const val LIGHT_COMMAND = 32
+    const val FAN_COMMAND = 31
+    const val SWITCH_COMMAND = 33
+    const val BUTTON_COMMAND = 62
 
     // State decoding categories, keyed by *StateResponse id.
     private const val BOOL = 0      // on/off (with missing_state at field 3)
@@ -64,14 +82,15 @@ object ApiMessages {
     private const val LIGHT = 4     // on/off + brightness
 
     private val STATE_KINDS: Map<Int, Int> = mapOf(
-        21 to BOOL,        // binary_sensor
+        21 to BOOL,            // binary_sensor
         26 to BOOL_NO_MISSING, // switch
-        24 to LIGHT,       // light
-        25 to FLOAT,       // sensor
-        50 to FLOAT,       // number
-        27 to TEXT,        // text_sensor
-        53 to TEXT,        // select
-        98 to TEXT,        // text
+        23 to BOOL_NO_MISSING, // fan (field 3 is `oscillating`, not missing_state)
+        24 to LIGHT,           // light
+        25 to FLOAT,           // sensor
+        50 to FLOAT,           // number
+        27 to TEXT,            // text_sensor
+        53 to TEXT,            // select
+        98 to TEXT,            // text
     )
 
     /** Whether [type] is a state message we decode (others leave the cell blank). */
@@ -79,6 +98,10 @@ object ApiMessages {
 
     /** Whether [type] is an entity-list response we list. */
     fun isEntityList(type: Int): Boolean = ENTITY_TYPES.containsKey(type)
+
+    /** Entity component types the tool window can toggle or press. */
+    fun isControllable(type: String): Boolean = type in CONTROLLABLE
+    private val CONTROLLABLE = setOf("switch", "light", "fan", "button")
 
     // ---- requests ----
 
@@ -89,6 +112,21 @@ object ApiMessages {
 
     val EMPTY: ByteArray = ByteArray(0)
 
+    // ---- commands ----
+
+    /** The (message type, payload) to set toggleable [type] entity [key] to [on], or null. */
+    fun toggleCommand(type: String, key: Long, on: Boolean): Pair<Int, ByteArray>? = when (type) {
+        "switch" -> SWITCH_COMMAND to ProtoWriter().fixed32(1, key).bool(2, on).toByteArray()
+        // light/fan: has_state(2)=true, state(3)=on
+        "light" -> LIGHT_COMMAND to ProtoWriter().fixed32(1, key).bool(2, true).bool(3, on).toByteArray()
+        "fan" -> FAN_COMMAND to ProtoWriter().fixed32(1, key).bool(2, true).bool(3, on).toByteArray()
+        else -> null
+    }
+
+    /** The (message type, payload) to press button [key]. */
+    fun buttonCommand(key: Long): Pair<Int, ByteArray> =
+        BUTTON_COMMAND to ProtoWriter().fixed32(1, key).toByteArray()
+
     // ---- decoding ----
 
     fun decodeEntity(listId: Int, payload: ByteArray): ApiEntity {
@@ -97,6 +135,8 @@ object ApiMessages {
         var key = 0L
         var name = ""
         var unit = ""
+        var deviceClass = ""
+        var accuracyDecimals = -1
         while (r.hasMore()) {
             val tag = r.readTag()
             val field = r.fieldOf(tag)
@@ -106,10 +146,14 @@ object ApiMessages {
                 field == 2 && wire == 5 -> key = r.readFixed32()
                 field == 3 && wire == 2 -> name = r.readString()
                 field == 6 && wire == 2 && listId == SENSOR_LIST -> unit = r.readString()
+                field == 7 && wire == 0 && listId == SENSOR_LIST -> accuracyDecimals = r.readVarint().toInt()
+                // device_class lives at different fields per type; read the ones that drive icons.
+                field == 9 && wire == 2 && listId == SENSOR_LIST -> deviceClass = r.readString()
+                field == 5 && wire == 2 && listId == BINARY_SENSOR_LIST -> deviceClass = r.readString()
                 else -> r.skip(wire)
             }
         }
-        return ApiEntity(key, ENTITY_TYPES[listId] ?: "unknown", name.ifEmpty { objectId }, unit)
+        return ApiEntity(key, ENTITY_TYPES[listId] ?: "unknown", name.ifEmpty { objectId }, unit, deviceClass, accuracyDecimals)
     }
 
     /** Decode a state message into a display string, or null for types we don't render. */
@@ -143,7 +187,13 @@ object ApiMessages {
             TEXT -> if (missing) DASH else s
             else -> return null
         }
-        return ApiState(key, display)
+        val active: Boolean? = when (kind) {
+            BOOL, BOOL_NO_MISSING -> if (missing) null else bool
+            LIGHT -> bool
+            else -> null
+        }
+        val number: Float? = if (kind == FLOAT && !missing) f else null
+        return ApiState(key, display, active, number)
     }
 
     fun decodeHelloResponse(payload: ByteArray): String {

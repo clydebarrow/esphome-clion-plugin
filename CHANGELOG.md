@@ -15,6 +15,10 @@ release.
   manual override. Works with both plaintext and **encrypted** (`encryption:`)
   APIs — the Noise handshake uses only the bundled JDK crypto, no extra
   dependency.
+- The device window now shows an **icon per entity** (by type / device class)
+  and lets you **control** the common ones — on-off toggles for switches,
+  lights and fans, and a Press button for buttons — grouped by type like Home
+  Assistant / the ESPHome webserver.
 
 ### Changed
 
