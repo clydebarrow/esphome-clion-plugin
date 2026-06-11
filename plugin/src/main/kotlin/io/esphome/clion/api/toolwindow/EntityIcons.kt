@@ -1,30 +1,27 @@
 package io.esphome.clion.api.toolwindow
 
 import com.intellij.openapi.util.IconLoader
-import com.intellij.util.IconUtil
-import com.intellij.util.ui.UIUtil
 import javax.swing.Icon
 
 /**
  * Maps an entity's component type / device class to a bundled (curated MDI)
- * icon, recolored to the IDE's label foreground so it adapts to the theme. The
- * device class wins when known (e.g. a `temperature` sensor), else the type, with
- * a generic fallback.
+ * icon. The icons are monochrome greys with a `_dark` variant, so IconLoader
+ * picks the right one for the theme. The device class wins when known (e.g. a
+ * `temperature` sensor), else the type, with a generic fallback.
  */
 object EntityIcons {
 
     /**
-     * Icon for an entity, recolored to the IDE label foreground. A binary_sensor
-     * shows a filled circle when on and an unfilled circle when off ([active]);
-     * everything else picks by device class then type.
+     * Icon for an entity. A binary_sensor shows a filled circle when on and an
+     * unfilled circle when off ([active]); everything else picks by device class
+     * then type.
      */
     fun iconFor(type: String, deviceClass: String, active: Boolean? = null): Icon {
         val name = when (type) {
             "binary_sensor" -> if (active == true) "circle" else "circle-outline"
             else -> DEVICE_CLASS_ICONS[deviceClass] ?: TYPE_ICONS[type] ?: FALLBACK
         }
-        val base = IconLoader.getIcon("/icons/esphome/$name.svg", EntityIcons::class.java)
-        return IconUtil.colorize(base, UIUtil.getLabelForeground())
+        return IconLoader.getIcon("/icons/esphome/$name.svg", EntityIcons::class.java)
     }
 
     /** Every bundled icon name referenced — for a resource-presence test. */

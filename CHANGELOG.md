@@ -7,6 +7,15 @@ release.
 
 ## [Unreleased]
 
+## [0.10.1]
+
+### Fixed
+
+- Device-window icons no longer use `IconUtil.colorize`, which is binary
+  incompatible on some IDE builds (2025.1) and could fail to load the plugin.
+  Icons are now bundled as monochrome SVGs with `_dark` variants the IDE picks
+  by theme.
+
 ## [0.10.0]
 
 ### Added
