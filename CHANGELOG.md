@@ -7,6 +7,8 @@ release.
 
 ## [Unreleased]
 
+## [0.10.0]
+
 ### Added
 
 - **ESPHome Device** tool window: connect to a running device over the native
