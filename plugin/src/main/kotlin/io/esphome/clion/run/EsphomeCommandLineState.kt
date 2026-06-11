@@ -3,11 +3,14 @@ package io.esphome.clion.run
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.configurations.PathEnvironmentVariableUtil
 import com.intellij.execution.configurations.PtyCommandLine
+import com.intellij.execution.process.CapturingProcessHandler
 import com.intellij.execution.process.KillableColoredProcessHandler
 import com.intellij.execution.process.ProcessHandler
 import com.intellij.execution.process.ProcessTerminatedListener
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.configurations.CommandLineState
+import com.intellij.openapi.util.SystemInfo
+import com.intellij.util.EnvironmentUtil
 import com.intellij.util.execution.ParametersListUtil
 import io.esphome.clion.settings.EsphomeSettings
 import java.io.File
@@ -87,7 +90,9 @@ object EsphomeCommandLines {
             // Local and the managed venv differ only in which `esphome` runs.
             EsphomeBackend.LOCAL, EsphomeBackend.VENV -> {
                 val exe = executable ?: error("esphome executable not found")
-                GeneralCommandLine(exe, command.id, configFile.path).withParams(trailing)
+                GeneralCommandLine(exe, command.id, configFile.path)
+                    .withParams(trailing)
+                    .withEnvironment(sdlEnvironment()) // host/SDL builds need sdl2-config + libSDL2
             }
             // Mount the config's directory at /config (ESPHome's working dir),
             // plus a persistent host cache at /cache, and run on the file by
@@ -119,7 +124,9 @@ object EsphomeCommandLines {
         val commandLine = when (backend) {
             EsphomeBackend.LOCAL, EsphomeBackend.VENV -> {
                 val exe = executable ?: error("esphome executable not found")
-                GeneralCommandLine(exe, "config", configFile.path)
+                // `esphome config` validates the SDL display too, which runs
+                // sdl2-config — so validation needs the same env as a build.
+                GeneralCommandLine(exe, "config", configFile.path).withEnvironment(sdlEnvironment())
             }
             EsphomeBackend.DOCKER ->
                 GeneralCommandLine(dockerExecutable)
@@ -183,6 +190,49 @@ object EsphomeCommandLines {
         "/Applications/Docker.app/Contents/Resources/bin/docker",
         "/usr/bin/docker",
     )
+
+    // --- host/SDL display: make sdl2-config and libSDL2 reachable ---
+
+    /**
+     * Extra environment for a host/SDL build: `sdl2-config` (which Homebrew
+     * installs outside a GUI IDE's PATH) added to PATH, and the SDL library dirs
+     * — taken from `sdl2-config --libs` — added to the dynamic-linker path
+     * (`DYLD_LIBRARY_PATH` on macOS, `LD_LIBRARY_PATH` elsewhere). Empty when
+     * sdl2-config isn't found. Computed once per session.
+     */
+    fun sdlEnvironment(): Map<String, String> = sdlEnv
+
+    private val sdlEnv: Map<String, String> by lazy { computeSdlEnvironment() }
+
+    private fun computeSdlEnvironment(): Map<String, String> {
+        val sdlConfig = SDL_BIN_DIRS.map { File(it, "sdl2-config") }.firstOrNull { it.canExecute() }
+            ?: return emptyMap()
+        val env = linkedMapOf("PATH" to prepend(sdlConfig.parent, EnvironmentUtil.getValue("PATH")))
+        val libDirs = parseLibDirs(runForOutput(sdlConfig.path, "--libs"))
+        if (libDirs.isNotEmpty()) {
+            val libVar = if (SystemInfo.isMac) "DYLD_LIBRARY_PATH" else "LD_LIBRARY_PATH"
+            env[libVar] = prepend(libDirs.joinToString(File.pathSeparator), EnvironmentUtil.getValue(libVar))
+        }
+        return env
+    }
+
+    /** Library search dirs from a `sdl2-config --libs` line (the `-L<dir>` flags). */
+    internal fun parseLibDirs(libsOutput: String): List<String> =
+        Regex("""-L(\S+)""").findAll(libsOutput).map { it.groupValues[1] }.distinct().toList()
+
+    private fun runForOutput(vararg command: String): String = try {
+        // CapturingProcessHandler drains stdout *and* stderr on separate threads
+        // and kills the process on timeout — so this can't hang or deadlock.
+        val output = CapturingProcessHandler(GeneralCommandLine(*command)).runProcess(5_000)
+        if (output.isTimeout || output.exitCode != 0) "" else output.stdout
+    } catch (_: Exception) {
+        ""
+    }
+
+    private fun prepend(dir: String, base: String?): String =
+        if (base.isNullOrEmpty()) dir else dir + File.pathSeparator + base
+
+    private val SDL_BIN_DIRS = listOf("/opt/homebrew/bin", "/usr/local/bin", "/usr/bin")
 
     private fun GeneralCommandLine.withParams(args: List<String>): GeneralCommandLine =
         apply { addParameters(args) }
