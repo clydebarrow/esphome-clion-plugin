@@ -64,7 +64,7 @@ em { font-style: normal; color: var(--muted); }
 .nav__brand { display: flex; align-items: center; gap: .55rem; font-weight: 700; color: var(--ink); font-size: 1.05rem; }
 .nav__brand:hover { text-decoration: none; }
 .nav__brand em { font-weight: 500; }
-.nav__logo { width: 26px; height: 26px; fill: var(--brand); }
+.nav__logo { width: 26px; height: 26px; }
 .nav__links { display: flex; gap: 1.4rem; margin-left: auto; }
 .nav__links a { color: var(--ink-soft); font-weight: 500; font-size: .95rem; }
 .nav__links a:hover { color: var(--brand-ink); text-decoration: none; }
