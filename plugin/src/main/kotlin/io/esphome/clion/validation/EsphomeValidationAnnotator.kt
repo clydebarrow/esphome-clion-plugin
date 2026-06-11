@@ -11,17 +11,14 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileEditor.FileDocumentManager
-import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiFile
-import com.intellij.psi.PsiManager
-import io.esphome.clion.psi.EsphomeYaml
 import io.esphome.clion.run.EsphomeBackend
 import io.esphome.clion.run.EsphomeCommandLines
 import io.esphome.clion.run.EsphomeExecutables
-import io.esphome.clion.services.EsphomeIncludeGraph
+import io.esphome.clion.services.EsphomeConfigRoots
 import io.esphome.clion.settings.EsphomeSettings
 import org.jetbrains.yaml.psi.YAMLFile
 import java.io.File
@@ -55,29 +52,14 @@ class EsphomeValidationAnnotator : ExternalAnnotator<EsphomeValidationAnnotator.
         val virtualFile = file.virtualFile ?: return null
         if (!virtualFile.isInLocalFileSystem) return null
 
-        val configFile = if (EsphomeYaml.isStandaloneConfig(file)) {
-            virtualFile // a device root (esphome:/packages:) validates itself
-        } else {
-            // a fragment compiles only inside a device — validate the root that includes it
-            includingRoot(file.project, virtualFile) ?: return null
-        }
+        // Validate against the device root this file belongs to: itself when it is
+        // top-level, otherwise the including config — so a shared package (which has
+        // an `esphome:` block but is `!include`d) is validated through a real device
+        // and its `${substitutions}` resolve, rather than erroring standalone. The
+        // ambiguous "which device" is resolved by the selected run configuration.
+        // Null = orphan fragment → skip.
+        val configFile = EsphomeConfigRoots.effectiveRoot(file.project, virtualFile) ?: return null
         return Info(virtualFile, virtualFile.path, configFile, configFile.path)
-    }
-
-    /**
-     * The device root that includes [fragment], if any. Prefers a standalone
-     * config (top-level `esphome:`/`packages:`) among the topmost includers; an
-     * orphan fragment (included by nothing, or no root is a config) yields null
-     * and is not validated, since running it standalone would report spurious
-     * errors.
-     */
-    internal fun includingRoot(project: Project, fragment: VirtualFile): VirtualFile? {
-        val psiManager = PsiManager.getInstance(project)
-        return EsphomeIncludeGraph.getInstance(project).rootsOf(fragment)
-            .asSequence()
-            .filter { it != fragment }
-            .filter { root -> (psiManager.findFile(root) as? YAMLFile)?.let(EsphomeYaml::isStandaloneConfig) == true }
-            .minByOrNull { it.path }
     }
 
     override fun doAnnotate(info: Info): List<EsphomeDiagnostic> {

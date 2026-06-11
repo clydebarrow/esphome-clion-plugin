@@ -22,6 +22,12 @@ release.
 
 ### Fixed
 
+- A shared package (a file with an `esphome:` block that is `!include`d by
+  devices) is no longer treated as a standalone config: it's validated through
+  the device that includes it — disambiguated by the selected run configuration —
+  so its `${substitutions}` resolve instead of erroring. Connection-target
+  derivation now resolves names in the chosen device's own include scope, so a
+  device sharing a package no longer picks up a sibling's name/host.
 - `id: !extend X` / `id: !remove X` in a `packages:`-based config now link to the
   `id: X` declared in the package — go-to-definition and find-usages connect the
   two, and the override is no longer mistaken for a second declaration of `X`.
