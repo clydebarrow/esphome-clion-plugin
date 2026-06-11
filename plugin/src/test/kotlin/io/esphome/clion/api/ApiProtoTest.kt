@@ -130,6 +130,14 @@ class ApiProtoTest {
     }
 
     @Test
+    fun `fan state decodes on-off and ignores oscillating at field 3`() {
+        // FanStateResponse: key, state(2 bool), oscillating(3 bool) — not missing_state.
+        val s = ApiMessages.decodeState(23, fixed32(1, 1) + boolf(2, true) + boolf(3, true))!!
+        assertEquals("on", s.display)
+        assertEquals(true, s.active)
+    }
+
+    @Test
     fun `entity decodes device class for icon choice`() {
         val sensor = ApiMessages.decodeEntity(16, str(1, "t") + fixed32(2, 1) + str(3, "Temp") + str(9, "temperature"))
         assertEquals("temperature", sensor.deviceClass)

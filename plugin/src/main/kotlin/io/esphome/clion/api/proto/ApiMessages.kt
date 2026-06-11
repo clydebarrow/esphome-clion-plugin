@@ -78,14 +78,15 @@ object ApiMessages {
     private const val LIGHT = 4     // on/off + brightness
 
     private val STATE_KINDS: Map<Int, Int> = mapOf(
-        21 to BOOL,        // binary_sensor
+        21 to BOOL,            // binary_sensor
         26 to BOOL_NO_MISSING, // switch
-        24 to LIGHT,       // light
-        25 to FLOAT,       // sensor
-        50 to FLOAT,       // number
-        27 to TEXT,        // text_sensor
-        53 to TEXT,        // select
-        98 to TEXT,        // text
+        23 to BOOL_NO_MISSING, // fan (field 3 is `oscillating`, not missing_state)
+        24 to LIGHT,           // light
+        25 to FLOAT,           // sensor
+        50 to FLOAT,           // number
+        27 to TEXT,            // text_sensor
+        53 to TEXT,            // select
+        98 to TEXT,            // text
     )
 
     /** Whether [type] is a state message we decode (others leave the cell blank). */

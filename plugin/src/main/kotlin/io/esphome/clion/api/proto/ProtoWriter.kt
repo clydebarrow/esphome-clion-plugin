@@ -27,6 +27,7 @@ class ProtoWriter {
 
     /** fixed32 (wire type 5), little-endian — always written (entity keys need it). */
     fun fixed32(field: Int, value: Long): ProtoWriter {
+        require(value in 0..0xFFFF_FFFFL) { "fixed32 value out of range: $value" }
         tag(field, 5)
         out.write((value and 0xFF).toInt())
         out.write(((value ushr 8) and 0xFF).toInt())

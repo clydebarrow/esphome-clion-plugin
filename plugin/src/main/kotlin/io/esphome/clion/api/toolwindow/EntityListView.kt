@@ -54,10 +54,14 @@ class EntityListView : JPanel(VerticalLayout(0)) {
             border = JBUI.Borders.empty(10, 8, 3, 8)
         }
 
-    /** `binary_sensor` → "Binary sensors", `media_player` → "Media players". */
+    /** `binary_sensor` → "Binary sensors", `switch` → "Switches". */
     private fun displayName(type: String): String {
-        val words = type.split("_")
-        return words.mapIndexed { i, w -> if (i == 0) w.replaceFirstChar(Char::uppercase) else w }
-            .joinToString(" ") + "s"
+        val label = type.split("_")
+            .mapIndexed { i, w -> if (i == 0) w.replaceFirstChar(Char::uppercase) else w }
+            .joinToString(" ")
+        val suffix = if (label.endsWith("s") || label.endsWith("x") || label.endsWith("z") ||
+            label.endsWith("ch") || label.endsWith("sh")
+        ) "es" else "s"
+        return label + suffix
     }
 }

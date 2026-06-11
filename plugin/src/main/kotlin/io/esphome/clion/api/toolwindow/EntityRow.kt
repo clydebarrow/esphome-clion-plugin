@@ -60,8 +60,11 @@ class EntityRow(
         toggle?.let { t ->
             if (active != null) {
                 updatingProgrammatically = true
-                t.isSelected = active
-                updatingProgrammatically = false
+                try {
+                    t.isSelected = active
+                } finally {
+                    updatingProgrammatically = false
+                }
             }
         }
         stateLabel.text = if (entity.unit.isNotEmpty() && display != "—") "$display ${entity.unit}" else display
