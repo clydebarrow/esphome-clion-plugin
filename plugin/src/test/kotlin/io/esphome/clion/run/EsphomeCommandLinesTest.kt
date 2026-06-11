@@ -106,6 +106,17 @@ class EsphomeCommandLinesTest {
         )
     }
 
+    @Test
+    fun `network vs serial device detection`() {
+        assertEquals(true, EsphomeCommandLines.isNetworkDevice("living-room.local"))
+        assertEquals(true, EsphomeCommandLines.isNetworkDevice("10.0.0.5"))
+        assertEquals(false, EsphomeCommandLines.isNetworkDevice("/dev/ttyUSB0"))
+        assertEquals(false, EsphomeCommandLines.isNetworkDevice("/dev/cu.usbserial-1420"))
+        assertEquals(false, EsphomeCommandLines.isNetworkDevice("COM3"))
+        assertEquals(false, EsphomeCommandLines.isNetworkDevice("")) // blank: ESPHome may pick serial
+        assertEquals(false, EsphomeCommandLines.isNetworkDevice(null))
+    }
+
     // --- buildConfig: validation runs `esphome config` on the same backend as a run ---
 
     @Test
