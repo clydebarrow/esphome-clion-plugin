@@ -9,6 +9,7 @@ import com.intellij.openapi.fileEditor.FileEditorManagerListener
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.IndexNotReadyException
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextField
@@ -19,6 +20,8 @@ import io.esphome.clion.api.EsphomeApiTarget
 import io.esphome.clion.api.proto.ApiEntity
 import io.esphome.clion.api.proto.ApiState
 import java.awt.BorderLayout
+import java.awt.GridBagConstraints
+import java.awt.GridBagLayout
 import javax.swing.JButton
 import javax.swing.JPanel
 
@@ -32,6 +35,7 @@ class EsphomeApiPanel(private val project: Project) :
 
     private val model = EntityTableModel()
     private val hostField = JBTextField()
+    private val keyField = JBTextField().apply { emptyText.text = "blank = plaintext; base64 key for encrypted api:" }
     private val connectButton = JButton("Connect")
     private val statusLabel = JBLabel(" ")
 
@@ -40,10 +44,12 @@ class EsphomeApiPanel(private val project: Project) :
     private var target: EsphomeApiTarget.Target? = null
 
     init {
-        val controls = JPanel(BorderLayout(JBUI.scale(6), 0)).apply {
-            add(JBLabel("Device:"), BorderLayout.WEST)
-            add(hostField, BorderLayout.CENTER)
-            add(connectButton, BorderLayout.EAST)
+        val controls = JPanel(GridBagLayout()).apply {
+            add(JBLabel("Host:"), gbc(0, 0))
+            add(hostField, gbc(1, 0, grow = true))
+            add(connectButton, gbc(2, 0))
+            add(JBLabel("Key:"), gbc(0, 1))
+            add(keyField, gbc(1, 1, grow = true, width = 2))
         }
         val header = JPanel(BorderLayout()).apply {
             border = JBUI.Borders.empty(6)
@@ -78,12 +84,45 @@ class EsphomeApiPanel(private val project: Project) :
         target = derived
         if (connection != null) return
         if (hostField.text.isBlank() && derived.host != null) hostField.text = hostPort(derived.host, derived.port)
+        if (keyField.text.isBlank() && derived.encryptionKey != null) keyField.text = derived.encryptionKey
+        updateReadyStatus(derived)
+    }
+
+    /**
+     * Pre-fill host (and key, when the config has one) from [file] on explicit
+     * request — the context-menu action — overriding the current host. Leaves an
+     * already-pasted key in place when the config has none, and never touches a
+     * live connection (the fields apply on the next Connect).
+     */
+    fun prefill(file: VirtualFile) {
+        if (disposed) return
+        val derived = try {
+            EsphomeApiTarget.forFile(project, file)
+        } catch (_: IndexNotReadyException) {
+            return
+        }
+        target = derived
+        derived.host?.let { hostField.text = hostPort(it, derived.port) }
+        derived.encryptionKey?.let { keyField.text = it }
+        if (connection == null) updateReadyStatus(derived)
+    }
+
+    private fun updateReadyStatus(derived: EsphomeApiTarget.Target) {
+        val device = derived.deviceName ?: "device"
         statusLabel.text = when {
             !derived.hasApi -> "No api: in the open config — enter host:port to connect."
-            derived.encryptionKey != null -> "Encrypted api: detected (encrypted support coming soon)."
-            else -> "Ready — Connect to ${derived.deviceName ?: "device"}."
+            derived.encryptionKey != null || keyField.text.isNotBlank() -> "Ready — Connect to $device (encrypted)."
+            else -> "Ready — Connect to $device (no key found; paste one if it's encrypted)."
         }
     }
+
+    private fun gbc(x: Int, y: Int, grow: Boolean = false, width: Int = 1): GridBagConstraints =
+        GridBagConstraints().apply {
+            gridx = x; gridy = y; gridwidth = width
+            insets = JBUI.insets(2)
+            anchor = GridBagConstraints.WEST
+            if (grow) { weightx = 1.0; fill = GridBagConstraints.HORIZONTAL }
+        }
 
     private fun connect() {
         val raw = hostField.text.trim()
@@ -93,7 +132,8 @@ class EsphomeApiPanel(private val project: Project) :
         }
         val (host, port) = parseHostPort(raw)
         model.clear()
-        val conn = EsphomeApiConnection(host, port, target?.password, target?.encryptionKey, this)
+        val key = keyField.text.trim().ifEmpty { null }
+        val conn = EsphomeApiConnection(host, port, target?.password, key, this)
         connection = conn
         connectButton.text = "Disconnect"
         conn.start()
