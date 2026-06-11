@@ -1,5 +1,6 @@
 import org.jetbrains.changelog.Changelog
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask
 import java.net.URI
 
 // The ESPHome CLion plugin. Uses the IntelliJ Platform Gradle Plugin (2.x).
@@ -87,6 +88,20 @@ intellijPlatform {
         // channel; clean semver goes to the default (stable) channel.
         channels = providers.gradleProperty("pluginVersion").orElse("0.0.0")
             .map { listOf(if ("-" in it) "beta" else "default") }
+    }
+
+    // `verifyPlugin` checks binary compatibility across the supported IDE range
+    // (so a method missing on, say, 2025.1 is caught before publishing). Only
+    // real binary/structural problems fail the build; deprecated/experimental/
+    // internal API usages are reported but tolerated.
+    pluginVerification {
+        failureLevel = listOf(
+            VerifyPluginTask.FailureLevel.COMPATIBILITY_PROBLEMS,
+            VerifyPluginTask.FailureLevel.INVALID_PLUGIN,
+        )
+        ides {
+            recommended()
+        }
     }
 }
 

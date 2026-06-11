@@ -75,6 +75,15 @@ jobs:
           -PpluginVersion=${{ steps.version.outputs.version }}
           --stacktrace
 
+      # Gate the release on binary compatibility across the supported IDE range
+      # (downloads the recommended IDEs). Fails on real compatibility problems,
+      # so a build like the IconUtil.colorize 2025.1 break can't be published.
+      - name: Verify plugin compatibility
+        run: >-
+          ./gradlew :plugin:verifyPlugin
+          -PpluginVersion=${{ steps.version.outputs.version }}
+          --stacktrace
+
       - name: Locate distribution
         id: dist
         run: |
