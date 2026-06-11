@@ -35,13 +35,18 @@ import javax.swing.JPanel
  * drop (e.g. the device reboots) reconnects on a backing-off schedule.
  */
 class EsphomeApiPanel(private val project: Project) :
-    JPanel(BorderLayout()), Disposable, EsphomeApiConnection.Listener {
+    JPanel(BorderLayout()), Disposable {
 
     private val entityView = EntityListView()
     private val pendingEntities = mutableListOf<ApiEntity>()
     private val hostField = JBTextField(22)
     private val keyField = JBTextField(44).apply { emptyText.text = "blank = plaintext; base64 key for encrypted api:" }
-    private val connectButton = JButton("Connect")
+    private val connectButton = JButton("Disconnect").apply {
+        // Freeze the width at the wider label so toggling Connect/Disconnect
+        // doesn't resize the button and shift the row.
+        preferredSize = preferredSize
+        text = "Connect"
+    }
     private val statusLabel = JBLabel(" ")
 
     @Volatile private var disposed = false
@@ -56,6 +61,14 @@ class EsphomeApiPanel(private val project: Project) :
     @Volatile private var active = false
     private var reconnectAttempts = 0
     @Volatile private var reconnectFuture: ScheduledFuture<*>? = null
+
+    /**
+     * Identifies the current connection generation. Each [connect] bumps it; a
+     * prior connection that is still shutting down keeps its old token, so its
+     * late callbacks are dropped instead of corrupting the new connection's
+     * state (e.g. its `onClosed` nulling out the live [connection]). EDT-only.
+     */
+    private var connectionToken = 0L
 
     init {
         val controls = JPanel(GridBagLayout()).apply {
@@ -154,11 +167,14 @@ class EsphomeApiPanel(private val project: Project) :
         reconnectFuture?.cancel(false)
         reconnectFuture = null
         active = true
+        // New generation: a previous connection still tearing down keeps its old
+        // token, so its trailing callbacks are ignored by [ui].
+        val token = ++connectionToken
         val (host, port) = parseHostPort(raw)
         pendingEntities.clear()
         entityView.clear()
         val key = keyField.text.trim().ifEmpty { null }
-        val conn = EsphomeApiConnection(host, port, target?.password, key, this)
+        val conn = EsphomeApiConnection(host, port, target?.password, key, ConnectionListener(token))
         connection = conn
         connectButton.text = "Disconnect"
         conn.start()
@@ -217,21 +233,32 @@ class EsphomeApiPanel(private val project: Project) :
     private fun hostPort(host: String, port: Int): String =
         if (port == EsphomeApiTarget.DEFAULT_PORT) host else "$host:$port"
 
-    // --- EsphomeApiConnection.Listener (background thread) → EDT ---
-    override fun onStatus(status: String) = ui { statusLabel.text = status }
-    override fun onEntity(entity: ApiEntity) = ui { pendingEntities.add(entity) }
-    override fun onEntitiesComplete() = ui {
-        reconnectAttempts = 0 // a clean stream: restart the backoff for next time
-        entityView.setEntities(pendingEntities.toList())
+    /**
+     * Listener bound to one connection generation ([token]). Callbacks hop to the
+     * EDT and are dropped unless this is still the current generation, so a
+     * superseded connection (the user reconnected before it finished closing)
+     * can't mutate the live panel state.
+     */
+    private inner class ConnectionListener(private val token: Long) : EsphomeApiConnection.Listener {
+        override fun onStatus(status: String) = ui(token) { statusLabel.text = status }
+        override fun onEntity(entity: ApiEntity) = ui(token) { pendingEntities.add(entity) }
+        override fun onEntitiesComplete() = ui(token) {
+            reconnectAttempts = 0 // a clean stream: restart the backoff for next time
+            entityView.setEntities(pendingEntities.toList())
+        }
+        override fun onState(state: ApiState) = ui(token) { entityView.updateState(state) }
+        override fun onError(message: String) = ui(token) { statusLabel.text = "Error: $message" }
+        override fun onClosed() = ui(token) {
+            connection = null
+            // Keep trying while the user still wants a connection (device rebooted,
+            // network blip); a user Disconnect cleared `active`, so it stays closed.
+            if (active && !disposed) scheduleReconnect() else connectButton.text = "Connect"
+        }
     }
-    override fun onState(state: ApiState) = ui { entityView.updateState(state) }
-    override fun onError(message: String) = ui { statusLabel.text = "Error: $message" }
-    override fun onClosed() = ui {
-        connection = null
-        // Keep trying while the user still wants a connection (device rebooted,
-        // network blip); a user Disconnect cleared `active`, so it stays closed.
-        if (active && !disposed) scheduleReconnect() else connectButton.text = "Connect"
-    }
+
+    /** Run [action] on the EDT only if [token] is still the current generation. */
+    private inline fun ui(token: Long, crossinline action: () -> Unit) =
+        ui { if (token == connectionToken) action() }
 
     private inline fun ui(crossinline action: () -> Unit) {
         if (disposed) return
