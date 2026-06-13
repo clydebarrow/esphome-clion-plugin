@@ -7,6 +7,15 @@ release.
 
 ## [Unreleased]
 
+## [0.13.2]
+
+### Fixed
+
+- Id navigation and completion now work in a config opened **outside the
+  project's content roots** (e.g. a file from another directory). The id lookup
+  falls back to a direct PSI scan when the file-based index doesn't cover the
+  file, so even a same-file reference like an lvgl `text_font: <font_id>` resolves.
+
 ## [0.13.1]
 
 ### Fixed
