@@ -12,6 +12,7 @@ import java.awt.FlowLayout
 import java.awt.Rectangle
 import javax.swing.JPanel
 import javax.swing.Scrollable
+import javax.swing.Timer
 
 /**
  * The device's entities grouped by type, each group a fixed-width column
@@ -24,6 +25,10 @@ class EntityListView :
     Scrollable {
 
     private val rows = HashMap<Long, EntityRow>()
+    private val eventRows = mutableListOf<EntityRow>()
+
+    /** Drives the "… ago" relative time on event rows; runs only while events are present. */
+    private val ticker = Timer(1000) { eventRows.forEach(EntityRow::tick) }.apply { isRepeats = true }
 
     /** Where a row's control sends its command. */
     var commandSink: CommandSink = CommandSink { _, _ -> }
@@ -37,10 +42,14 @@ class EntityListView :
         clear()
         entities.groupBy { it.type }.toSortedMap().forEach { (type, group) ->
             val groupRows = group.sortedBy { it.name.lowercase() }.map { entity ->
-                EntityRow(entity, commandSink).also { rows[entity.key] = it }
+                EntityRow(entity, commandSink).also { row ->
+                    rows[entity.key] = row
+                    if (entity.type == "event") eventRows.add(row)
+                }
             }
             add(GroupPanel("${displayName(type)} (${group.size})", groupRows))
         }
+        if (eventRows.isNotEmpty()) ticker.start()
         revalidate()
         repaint()
     }
@@ -50,10 +59,17 @@ class EntityListView :
     }
 
     fun clear() {
+        ticker.stop()
         rows.clear()
+        eventRows.clear()
         removeAll()
         revalidate()
         repaint()
+    }
+
+    /** Stop the relative-time ticker (the panel calls this on dispose). */
+    fun dispose() {
+        ticker.stop()
     }
 
     /** `binary_sensor` → "Binary sensors", `switch` → "Switches". */

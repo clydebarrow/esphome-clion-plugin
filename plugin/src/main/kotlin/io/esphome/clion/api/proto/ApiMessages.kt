@@ -80,6 +80,7 @@ object ApiMessages {
     private const val FLOAT = 2     // numeric, optional unit appended by the table
     private const val TEXT = 3      // string state
     private const val LIGHT = 4     // on/off + brightness
+    private const val EVENT = 5     // momentary trigger carrying an event_type
 
     private val STATE_KINDS: Map<Int, Int> = mapOf(
         21 to BOOL,            // binary_sensor
@@ -91,6 +92,7 @@ object ApiMessages {
         27 to TEXT,            // text_sensor
         53 to TEXT,            // select
         98 to TEXT,            // text
+        108 to EVENT,          // event (event_type at field 2; fires, no resting state)
     )
 
     /** Whether [type] is a state message we decode (others leave the cell blank). */
@@ -106,7 +108,15 @@ object ApiMessages {
     // ---- requests ----
 
     fun helloRequest(clientInfo: String): ByteArray =
-        ProtoWriter().string(1, clientInfo).uint32(2, 1).uint32(3, 12).toByteArray()
+        ProtoWriter().string(1, clientInfo).uint32(2, API_VERSION_MAJOR).uint32(3, API_VERSION_MINOR).toByteArray()
+
+    // Advertised native-API version. 1.14 is the current floor: below it the
+    // device logs an "outdated API" warning. The only behavioural difference for
+    // us is that a 1.14+ device omits the per-entity `object_id` (the client is
+    // expected to derive it from the name) — we only use `object_id` as a
+    // display fallback, and `name`/`key` are still sent, so decoding is unaffected.
+    private const val API_VERSION_MAJOR = 1
+    private const val API_VERSION_MINOR = 14
 
     fun authRequest(password: String): ByteArray = ProtoWriter().string(1, password).toByteArray()
 
@@ -185,6 +195,7 @@ object ApiMessages {
             LIGHT -> if (!bool) "off" else if (brightness > 0f) "on ${(brightness * 100).roundToInt()}%" else "on"
             FLOAT -> if (missing) DASH else formatFloat(f)
             TEXT -> if (missing) DASH else s
+            EVENT -> s.ifEmpty { "triggered" }
             else -> return null
         }
         val active: Boolean? = when (kind) {

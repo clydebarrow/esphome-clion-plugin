@@ -155,6 +155,12 @@ data class TriggerEntry(
  * An action (e.g. `lvgl.widget.update`, `switch.turn_on`) from
  * `automations.index.json`. Actions are global — usable in any automation list
  * — so unlike triggers they carry no `applies_to`.
+ *
+ * [domain] is the action's leading namespace (`switch.turn_on` → `switch`,
+ * `component.update` → `component`). For most actions it names the component
+ * type the shorthand-scalar argument references by id (`switch.turn_on: relay`),
+ * which drives id completion; `core` actions (`delay`, `lambda`, `if`, …) take
+ * no id.
  */
 @Serializable
 data class ActionEntry(
@@ -162,6 +168,7 @@ data class ActionEntry(
     val name: String = "",
     val description: String = "",
     @SerialName("docs_url") val docsUrl: String = "",
+    val domain: String = "",
 )
 
 /**

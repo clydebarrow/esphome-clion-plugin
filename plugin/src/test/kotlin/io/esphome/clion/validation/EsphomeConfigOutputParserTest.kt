@@ -220,6 +220,35 @@ class EsphomeConfigOutputParserTest {
     }
 
     @Test
+    fun `captures the offending value for an expanded id-reference shorthand`() {
+        // Captured: `on_value: - component.update: m` referencing an unknown id.
+        // ESPHome expands the shorthand and dumps `id: m`, with the error above it.
+        val out = """
+            Failed config
+
+            text_sensor.homeassistant: [source repro.yaml:8]
+              platform: homeassistant
+              name: Weather Condition
+              id: weather_condition
+              on_value:
+                - then:
+                    - component.update:
+
+                        Couldn't find ID 'm'. Please check you have defined an ID with that name.
+                        id: m
+              internal: True
+        """.trimIndent()
+        val diagnostics = EsphomeConfigOutputParser.parse(out, "repro.yaml")
+        assertEquals(1, diagnostics.size)
+        assertEquals(8, diagnostics[0].anchorLine)
+        assertEquals("id", diagnostics[0].offendingKey)
+        // The value lets the annotator skip `id: weather_condition` and locate the
+        // source `component.update: m` line by its value `m`.
+        assertEquals("m", diagnostics[0].offendingValue)
+        assertTrue(diagnostics[0].message.startsWith("Couldn't find ID 'm'"))
+    }
+
+    @Test
     fun `empty or success output yields no diagnostics`() {
         assertTrue(EsphomeConfigOutputParser.parse("", "x.yaml").isEmpty())
         assertTrue(EsphomeConfigOutputParser.parse("INFO Configuration is valid!", "x.yaml").isEmpty())

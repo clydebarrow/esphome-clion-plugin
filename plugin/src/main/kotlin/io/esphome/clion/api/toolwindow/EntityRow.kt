@@ -37,6 +37,11 @@ class EntityRow(
     private var toggle: OnOffButton? = null
     private var updatingProgrammatically = false
 
+    private val isEvent = entity.type == "event"
+    /** When the event last fired (epoch ms), or 0 before any. Events carry no resting state. */
+    private var eventAt = 0L
+    private var lastEventType = ""
+
     init {
         isOpaque = false
         border = JBUI.Borders.empty(3, 8)
@@ -66,6 +71,14 @@ class EntityRow(
 
     /** Reflect a live state: icon (binary), toggle (without re-sending), and/or label. */
     fun updateState(state: ApiState) {
+        // An event has no resting state — each update is a fresh trigger. Record
+        // when it fired and show "<event_type> · 10s ago", refreshed by [tick].
+        if (isEvent) {
+            eventAt = System.currentTimeMillis()
+            lastEventType = state.display
+            renderEvent()
+            return
+        }
         iconLabel.icon = EntityIcons.iconFor(entity.type, entity.deviceClass, state.active)
         toggle?.let { t ->
             state.active?.let { on ->
@@ -88,5 +101,32 @@ class EntityRow(
             state.display
         }
         return if (entity.unit.isNotEmpty() && text != "—") "$text ${entity.unit}" else text
+    }
+
+    /** Re-render an event's "… ago" label; a no-op until it has fired. Called every second. */
+    fun tick() {
+        if (isEvent && eventAt != 0L) renderEvent()
+    }
+
+    private fun renderEvent() {
+        val relative = relativeTime(System.currentTimeMillis() - eventAt)
+        stateLabel.text = if (lastEventType.isNotEmpty() && lastEventType != "triggered") {
+            "$lastEventType · $relative"
+        } else {
+            relative
+        }
+        stateLabel.toolTipText = "Last event: ${lastEventType.ifEmpty { "triggered" }}"
+    }
+
+    /** Coarse "time since" for an event trigger: just now / 12s / 5m / 2h / 3d ago. */
+    private fun relativeTime(elapsedMs: Long): String {
+        val seconds = elapsedMs / 1000
+        return when {
+            seconds < 1 -> "just now"
+            seconds < 60 -> "${seconds}s ago"
+            seconds < 3600 -> "${seconds / 60}m ago"
+            seconds < 86_400 -> "${seconds / 3600}h ago"
+            else -> "${seconds / 86_400}d ago"
+        }
     }
 }

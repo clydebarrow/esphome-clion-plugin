@@ -42,8 +42,12 @@ class EsphomeDocumentationProviderTest : BasePlatformTestCase() {
         assertTrue(doc!!.contains("<b>restore_mode</b>"))
     }
 
-    fun `test no doc for a platform domain key`() {
-        // `sensor:` is a category, not a single component.
-        assertNull(docAt("esphome:\n  name: x\nsen<caret>sor:\n  - platform: dht\n    pin: 4\n"))
+    fun `test doc for a platform domain key shows platforms and docs link`() {
+        // `sensor:` is a category — surface the domain (its platforms + docs link).
+        val doc = docAt("esphome:\n  name: x\nsen<caret>sor:\n  - platform: dht\n    pin: 4\n")
+        assertNotNull(doc)
+        assertTrue(doc!!.contains("<b>sensor</b>"))
+        assertTrue(doc.contains("Platform domain"))
+        assertTrue(doc.contains("esphome.io/components/sensor/"))
     }
 }

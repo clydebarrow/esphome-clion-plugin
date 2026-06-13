@@ -10,10 +10,11 @@ import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.IndexNotReadyException
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.wm.ToolWindowManager
+import com.intellij.openapi.wm.ex.ToolWindowManagerListener
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextField
-import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.util.ui.JBUI
 import io.esphome.clion.api.EsphomeApiConnection
 import io.esphome.clion.api.EsphomeApiTarget
@@ -22,10 +23,9 @@ import io.esphome.clion.api.proto.ApiState
 import java.awt.BorderLayout
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
-import java.util.concurrent.ScheduledFuture
-import java.util.concurrent.TimeUnit
 import javax.swing.JButton
 import javax.swing.JPanel
+import javax.swing.Timer
 
 /**
  * The **ESPHome Device** tool window: a Connect/Disconnect button, host and key
@@ -60,7 +60,8 @@ class EsphomeApiPanel(private val project: Project) :
      */
     @Volatile private var active = false
     private var reconnectAttempts = 0
-    @Volatile private var reconnectFuture: ScheduledFuture<*>? = null
+    /** Counts down the reconnect delay on the EDT; fires [connect] at zero. EDT-only. */
+    private var reconnectTimer: Timer? = null
 
     /**
      * Identifies the current connection generation. Each [connect] bumps it; a
@@ -90,16 +91,54 @@ class EsphomeApiPanel(private val project: Project) :
         add(header, BorderLayout.NORTH)
         add(JBScrollPane(entityView), BorderLayout.CENTER)
 
-        connectButton.addActionListener { if (active) stopConnection() else connect() }
-        hostField.addActionListener { if (!active) connect() }
+        // While waiting to auto-reconnect the button reads "Connect" — clicking it
+        // (or Enter in the host field) connects now, skipping the countdown.
+        connectButton.addActionListener {
+            when {
+                reconnectTimer != null -> connect()
+                active -> stopConnection()
+                else -> connect()
+            }
+        }
+        hostField.addActionListener { if (!active || reconnectTimer != null) connect() }
 
-        project.messageBus.connect(this).subscribe(
+        val busConnection = project.messageBus.connect(this)
+        busConnection.subscribe(
             FileEditorManagerListener.FILE_EDITOR_MANAGER,
             object : FileEditorManagerListener {
                 override fun selectionChanged(event: FileEditorManagerEvent) = refreshTarget()
             },
         )
+        // Disconnect when the tool window is hidden (so we don't keep a socket,
+        // reader thread and timers alive — and the plugin classloader pinned —
+        // while it's not on screen), and reconnect when it's shown again.
+        busConnection.subscribe(
+            ToolWindowManagerListener.TOPIC,
+            object : ToolWindowManagerListener {
+                override fun stateChanged(manager: ToolWindowManager) = onToolWindowVisibilityChanged(manager)
+            },
+        )
         refreshTarget()
+    }
+
+    /** Tracks the tool window's last-seen visibility so we act only on transitions. */
+    private var toolWindowVisible = true
+    /** True when a hide disconnected us, so the next show reconnects. */
+    private var reconnectOnShow = false
+
+    private fun onToolWindowVisibilityChanged(manager: ToolWindowManager) {
+        if (disposed) return
+        val visible = manager.getToolWindow(EsphomeApiToolWindowFactory.ID)?.isVisible ?: return
+        if (visible == toolWindowVisible) return
+        toolWindowVisible = visible
+        if (!visible) {
+            // Hidden: drop the live connection but remember to restore it on show.
+            reconnectOnShow = active
+            if (active) stopConnection()
+        } else if (reconnectOnShow) {
+            reconnectOnShow = false
+            if (hostField.text.isNotBlank()) connect()
+        }
     }
 
     /** Re-derive the default target from the active editor (when not connected). */
@@ -122,8 +161,9 @@ class EsphomeApiPanel(private val project: Project) :
     /**
      * Pre-fill host (and key, when the config has one) from [file] on explicit
      * request — the context-menu action — overriding the current host. Leaves an
-     * already-pasted key in place when the config has none, and never touches a
-     * live connection (the fields apply on the next Connect).
+     * already-pasted key in place when the config has none. Opening it for a
+     * *different* device while connected switches over (disconnect + reconnect);
+     * opening it for the one we're already on is a no-op.
      */
     fun prefill(file: VirtualFile) {
         if (disposed) return
@@ -133,12 +173,24 @@ class EsphomeApiPanel(private val project: Project) :
             return
         }
         target = derived
+        val previousHost = hostField.text
+        val previousKey = keyField.text
         derived.host?.let { hostField.text = hostPort(it, derived.port) }
         derived.encryptionKey?.let { keyField.text = it }
         if (connection == null) updateReadyStatus(derived)
-        // Opened by explicit user action: if we now have a host and aren't
-        // already connected, connect right away rather than making them click.
-        if (!active && hostField.text.isNotBlank()) connect()
+
+        val targetChanged = hostField.text != previousHost || keyField.text != previousKey
+        when {
+            // Connected to a different device now: drop it and connect to the new one.
+            active && targetChanged -> {
+                stopConnection()
+                connect()
+            }
+            // Already connected to this same device: nothing to do.
+            active -> Unit
+            // Not connected: opened by explicit action, so connect if we have a host.
+            hostField.text.isNotBlank() -> connect()
+        }
     }
 
     private fun updateReadyStatus(derived: EsphomeApiTarget.Target) {
@@ -164,8 +216,7 @@ class EsphomeApiPanel(private val project: Project) :
             statusLabel.text = "Enter a host, e.g. living-room.local or 10.0.0.5"
             return
         }
-        reconnectFuture?.cancel(false)
-        reconnectFuture = null
+        cancelReconnect()
         active = true
         // New generation: a previous connection still tearing down keeps its old
         // token, so its trailing callbacks are ignored by [ui].
@@ -183,8 +234,7 @@ class EsphomeApiPanel(private val project: Project) :
     /** User-initiated disconnect: clear intent so no reconnect is scheduled. */
     private fun stopConnection() {
         active = false
-        reconnectFuture?.cancel(false)
-        reconnectFuture = null
+        cancelReconnect()
         reconnectAttempts = 0
         connectButton.text = "Connect"
         connection?.stop()
@@ -192,19 +242,35 @@ class EsphomeApiPanel(private val project: Project) :
 
     /**
      * Schedule a reconnect after an unexpected drop, backing off
-     * [RECONNECT_BASE_SEC] × attempt up to [RECONNECT_MAX_SEC]. Re-armed each
-     * failure; the counter resets once a connection streams entities.
+     * [RECONNECT_BASE_SEC] × attempt up to [RECONNECT_MAX_SEC]. The status line
+     * counts the delay down each second ("reconnecting in 9s…"); at zero it
+     * reconnects. Re-armed each failure; the counter resets once a connection
+     * streams entities.
      */
     private fun scheduleReconnect() {
         reconnectAttempts++
-        val delaySec = (RECONNECT_BASE_SEC * reconnectAttempts).coerceAtMost(RECONNECT_MAX_SEC)
-        connectButton.text = "Disconnect"
-        statusLabel.text = "Disconnected — reconnecting in ${delaySec}s…"
-        reconnectFuture = AppExecutorUtil.getAppScheduledExecutorService().schedule(
-            { ui { if (active && connection == null) connect() } },
-            delaySec.toLong(),
-            TimeUnit.SECONDS,
-        )
+        var remaining = (RECONNECT_BASE_SEC * reconnectAttempts).coerceAtMost(RECONNECT_MAX_SEC)
+        // "Connect" while waiting — the click reconnects immediately (see init).
+        connectButton.text = "Connect"
+        statusLabel.text = reconnectMessage(remaining)
+        cancelReconnect()
+        reconnectTimer = Timer(1000) {
+            remaining--
+            if (remaining <= 0) {
+                cancelReconnect()
+                if (active && !disposed && connection == null) connect()
+            } else {
+                statusLabel.text = reconnectMessage(remaining)
+            }
+        }.apply { isRepeats = true; start() }
+    }
+
+    private fun reconnectMessage(seconds: Int): String = "Disconnected — reconnecting in ${seconds}s…"
+
+    /** Stop and clear the countdown timer (idempotent). */
+    private fun cancelReconnect() {
+        reconnectTimer?.stop()
+        reconnectTimer = null
     }
 
     private fun parseHostPort(raw: String): Pair<String, Int> {
@@ -268,12 +334,17 @@ class EsphomeApiPanel(private val project: Project) :
     override fun dispose() {
         disposed = true
         active = false
-        reconnectFuture?.cancel(false)
-        connection?.stop()
+        cancelReconnect()
+        entityView.dispose()
+        // Wait briefly for the reader thread to exit so a plugin reload doesn't
+        // see a lingering thread pinning the classloader (forcing a restart).
+        connection?.stopAndAwait(THREAD_JOIN_TIMEOUT_MS)
     }
 
     private companion object {
         const val RECONNECT_BASE_SEC = 5
         const val RECONNECT_MAX_SEC = 30
+        /** Cap on how long dispose waits for the reader thread; the socket close unblocks it at once. */
+        const val THREAD_JOIN_TIMEOUT_MS = 2_000L
     }
 }

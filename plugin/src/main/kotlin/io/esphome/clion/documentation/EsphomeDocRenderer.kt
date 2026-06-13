@@ -13,6 +13,31 @@ object EsphomeDocRenderer {
     fun render(target: EsphomeTarget): String = when (target) {
         is EsphomeTarget.Component -> renderComponent(target)
         is EsphomeTarget.Field -> renderField(target)
+        is EsphomeTarget.Domain -> renderDomain(target)
+    }
+
+    private fun renderDomain(target: EsphomeTarget.Domain): String {
+        val sb = StringBuilder()
+        sb.append(DocumentationMarkup.DEFINITION_START)
+        sb.append("<b>").append(escape(target.domain)).append("</b>")
+        sb.append(DocumentationMarkup.DEFINITION_END)
+
+        sb.append(DocumentationMarkup.CONTENT_START)
+            .append("Platform domain — add entries as <code>- platform: …</code> items, ")
+            .append("each configuring a ").append(code(target.domain)).append(" of the chosen platform.")
+            .append(DocumentationMarkup.CONTENT_END)
+
+        sb.append(DocumentationMarkup.SECTIONS_START)
+        if (target.platforms.isNotEmpty()) {
+            val shown = target.platforms.take(MAX_PLATFORMS).joinToString(", ") { code(it) }
+            val tail = if (target.platforms.size > MAX_PLATFORMS) ", …" else ""
+            section(sb, "Platforms (${target.platforms.size})", shown + tail)
+        }
+        // The catalog carries no docs_url for a domain umbrella; ESPHome's domain
+        // index page follows a stable path.
+        docsLink("https://esphome.io/components/${target.domain}/")?.let { section(sb, "Docs", it) }
+        sb.append(DocumentationMarkup.SECTIONS_END)
+        return sb.toString()
     }
 
     private fun renderComponent(target: EsphomeTarget.Component): String {
@@ -88,6 +113,8 @@ object EsphomeDocRenderer {
         html = CODE.replace(html) { m -> "<code>${m.groupValues[1]}</code>" }
         return html
     }
+
+    private const val MAX_PLATFORMS = 24
 
     private val LINK = Regex("""\[([^\]]+)]\(([^)]+)\)""")
     private val CODE = Regex("""`([^`]+)`""")

@@ -42,6 +42,7 @@ class EsphomeDocumentationProvider : AbstractDocumentationProvider() {
         return when (val target = resolve(element)) {
             is EsphomeTarget.Field -> "${target.entry.key} : ${target.entry.type.name.lowercase()}"
             is EsphomeTarget.Component -> target.index.name.ifEmpty { target.index.id }
+            is EsphomeTarget.Domain -> "${target.domain} (platform domain)"
             null -> null
         }
     }

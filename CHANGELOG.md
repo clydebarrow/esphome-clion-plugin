@@ -7,6 +7,67 @@ release.
 
 ## [Unreleased]
 
+## [0.13.0]
+
+### Added
+
+- **Lambda highlighting & checks**: embedded lambda (C++) bodies now get
+  lexer-based syntax highlighting (keywords, strings, numbers, comments) plus
+  cheap structural checks — unbalanced brackets and unterminated literals are
+  errors, and a likely-missing trailing `;` is a warning. Lexical only (no type
+  or identifier analysis); works in every IDE without a C++ plugin.
+- **Lambda `id()` support**: inside a lambda (C++) body, typing `id(` now
+  completes in-scope ids, and `id(<name>)` is a navigable reference to its
+  `id:` declaration (Ctrl-/Cmd-Click and find-usages).
+- Hovering a **platform-domain key** (`sensor:`, `switch:`, …) now shows quick-doc
+  — the available platforms and a link to the ESPHome domain page — instead of
+  nothing (the catalog has no umbrella entry for a domain, so it's synthesized).
+- **`secrets.yaml` masking**: values in an open `secrets.yaml` are now hidden
+  behind `••••••`, revealing only the value on the caret's line — so secrets
+  aren't exposed on a screen-share. Masking is visual only.
+- **`!secret` navigation**: Ctrl-/Cmd-Click (or go-to-definition) on a
+  `!secret <name>` value jumps to its `name:` declaration in the nearest
+  `secrets.yaml`.
+- The **ESPHome Device** window now lists **event** entities and shows when each
+  last fired — `<event_type> · 10s ago` — with the relative time ticking up live.
+- Id completion for **automation action** shorthand arguments — e.g.
+  `on_value: - component.update: <caret>` now suggests in-scope ids (any
+  component for `component.*`, or only ids of the matching type for
+  `switch.turn_on`, `script.execute`, …).
+
+### Fixed
+
+- A pin warning (e.g. a strapping-pin advisory for `GPIO3`) now anchors on the
+  whole-word pin, so it no longer highlights a different pin that merely contains
+  it (`GPIO38`).
+- Lambda bracket diagnostics now blame the **unclosed opener** at its own line
+  (e.g. the line with the missing `)`) instead of the next mismatching `}`/`{`.
+- The **ESPHome Device** window now disconnects when hidden (and reconnects when
+  shown), and fully tears down the connection — socket, reader thread, liveness
+  watchdog and timers — when the window is closed, the project closes, or the
+  plugin is unloaded. A hidden-but-connected window no longer keeps that work
+  running in the background.
+- Config validation runs the `esphome config` subprocess under the editor's
+  progress indicator, so a superseded validation is cancelled promptly instead
+  of running to completion.
+- Opening the **ESPHome Device** window (context menu) for a *different* device
+  while connected now switches over — disconnecting and reconnecting to the new
+  host — instead of only refilling the fields and staying on the old device.
+- While the device window is counting down to an auto-reconnect, the button now
+  reads **Connect** (not Disconnect) and clicking it reconnects immediately,
+  skipping the wait.
+- The **ESPHome Device** window now detects a device that drops off the network
+  silently (powered off, Wi-Fi lost) instead of freezing on stale values: a
+  liveness watchdog pings the device and, after ~25s without a reply, closes the
+  link so the existing auto-reconnect takes over.
+- A validation error inside an automation action (e.g. `component.update:`
+  referencing an unknown id) is now highlighted on the offending line instead of
+  an unrelated earlier `id:` in the same component. ESPHome expands the
+  shorthand and reports `id: <name>`; the annotator now matches the **value** to
+  the source line rather than the first same-named key.
+- The **ESPHome Device** window now advertises native-API version **1.14**, so
+  the device no longer logs an `'…' using outdated API 1.12` warning on connect.
+
 ## [0.12.0]
 
 ### Changed

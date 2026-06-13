@@ -19,6 +19,13 @@ sealed interface EsphomeTarget {
 
     /** A field within a component (`ssid`, `ap.channel`, `restore_mode`). */
     data class Field(val entry: ConfigEntry, val componentId: String) : EsphomeTarget
+
+    /**
+     * A platform-domain umbrella key (`sensor:`, `switch:`) — not a single
+     * catalog component but a category configured via `- platform:` items. Carries
+     * the platforms available under it for the hover.
+     */
+    data class Domain(val domain: String, val platforms: List<String>) : EsphomeTarget
 }
 
 /**
@@ -34,8 +41,8 @@ object EsphomeResolution {
 
         if (path.isEmpty()) {
             // Top-level. A platform domain (`sensor:`) is a category, not a single
-            // component, so it has no one doc target.
-            if (repo.isDomain(key)) return null
+            // component — surface the domain itself (its platforms + docs link).
+            if (repo.isDomain(key)) return EsphomeTarget.Domain(key, repo.platformsFor(key))
             val index = repo.indexEntry(key) ?: return null
             return EsphomeTarget.Component(index, repo.component(key))
         }

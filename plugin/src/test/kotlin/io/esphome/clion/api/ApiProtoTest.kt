@@ -87,6 +87,16 @@ class ApiProtoTest {
         assertEquals(null, ApiMessages.decodeState(22 /* cover */, fixed32(1, 1)))
     }
 
+    @Test
+    fun `event state surfaces the event_type`() {
+        // EventResponse (108): key=1, event_type=2.
+        val s = ApiMessages.decodeState(108, fixed32(1, 3) + str(2, "single_click"))!!
+        assertEquals("single_click", s.display)
+        assertEquals(3L, s.key)
+        // A type-less fire still reads as a trigger, not blank.
+        assertEquals("triggered", ApiMessages.decodeState(108, fixed32(1, 3))!!.display)
+    }
+
     // --- commands ---
 
     @Test

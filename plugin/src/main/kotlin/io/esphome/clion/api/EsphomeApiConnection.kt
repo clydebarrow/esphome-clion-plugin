@@ -8,6 +8,8 @@ import io.esphome.clion.api.transport.NoiseFrameHelper
 import io.esphome.clion.api.transport.PlaintextFrameHelper
 import java.net.InetSocketAddress
 import java.net.Socket
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -35,18 +37,43 @@ class EsphomeApiConnection(
     }
 
     private val running = AtomicBoolean(false)
+    @Volatile private var thread: Thread? = null
     @Volatile private var socket: Socket? = null
     /** The transport, exposed for sending commands only once streaming. */
     @Volatile private var frameHelper: FrameHelper? = null
 
+    /** Wall-clock of the last frame received; the watchdog uses it to spot a dead link. */
+    @Volatile private var lastActivityAt = 0L
+    @Volatile private var watchdog: ScheduledFuture<*>? = null
+    /** Set when the watchdog closes a dead link, so the read failure isn't reported as an error. */
+    @Volatile private var closedAsDead = false
+
     fun start() {
         if (!running.compareAndSet(false, true)) return
-        Thread({ run() }, "esphome-api-$host").apply { isDaemon = true }.start()
+        liveConnections.add(this)
+        thread = Thread({ run() }, "esphome-api-$host").apply { isDaemon = true; start() }
     }
 
     fun stop() {
         running.set(false)
+        // Cancel the recurring watchdog now (not just in run()'s finally) so a
+        // stopped connection doesn't keep a task — and the plugin classloader —
+        // pinned in the shared scheduled executor while the reader thread winds down.
+        watchdog?.cancel(false)
+        watchdog = null
         runCatching { socket?.close() }
+    }
+
+    /**
+     * Stop and wait up to [timeoutMs] for the reader thread to actually finish.
+     * Closing the socket unblocks its read at once, so this returns in
+     * milliseconds; the cap just guards a stuck close. Used on dispose / plugin
+     * unload so no lingering thread keeps the plugin's classloader pinned (which
+     * would force an IDE restart to reload the plugin).
+     */
+    fun stopAndAwait(timeoutMs: Long) {
+        stop()
+        runCatching { thread?.takeIf { it !== Thread.currentThread() }?.join(timeoutMs) }
     }
 
     /**
@@ -82,15 +109,55 @@ class EsphomeApiConnection(
             helper.writeMessage(ApiMessages.SUBSCRIBE_STATES_REQUEST, ApiMessages.EMPTY)
 
             frameHelper = helper // streaming: commands may now be sent
+            lastActivityAt = System.currentTimeMillis()
+            startWatchdog()
             readLoop(helper)
         } catch (e: Exception) {
-            thisLogger().warn("ESPHome API connection to $host:$port failed", e)
-            if (running.get()) listener.onError(describeError(e))
+            // A watchdog-forced close is an expected teardown, not an error to surface;
+            // the panel reconnects via onClosed.
+            if (closedAsDead) {
+                thisLogger().info("ESPHome API connection to $host:$port closed (device unresponsive)")
+            } else {
+                thisLogger().warn("ESPHome API connection to $host:$port failed", e)
+                if (running.get()) listener.onError(describeError(e))
+            }
         } finally {
             running.set(false)
+            watchdog?.cancel(false)
+            watchdog = null
             frameHelper = null
+            liveConnections.remove(this)
             runCatching { socket?.close() }
             listener.onClosed()
+        }
+    }
+
+    /**
+     * A silent device (powered off, Wi-Fi drop) sends no FIN, so [readLoop]'s
+     * blocking read never returns and the link looks alive but frozen. This
+     * watchdog pings on an interval and, when no frame has arrived for
+     * [DEAD_TIMEOUT_MS], closes the socket — unblocking the read with an
+     * exception so the panel's reconnect kicks in. Closing (rather than a socket
+     * read timeout) avoids leaving a half-read frame in the stream.
+     */
+    private fun startWatchdog() {
+        watchdog = AppExecutorUtil.getAppScheduledExecutorService().scheduleWithFixedDelay(
+            ::checkLiveness, PING_INTERVAL_MS, PING_INTERVAL_MS, TimeUnit.MILLISECONDS,
+        )
+    }
+
+    private fun checkLiveness() {
+        if (!running.get()) return
+        val idleMs = System.currentTimeMillis() - lastActivityAt
+        if (idleMs > DEAD_TIMEOUT_MS) {
+            thisLogger().info("ESPHome device $host:$port silent for ${idleMs}ms; closing to reconnect")
+            closedAsDead = true
+            listener.onStatus("Device not responding — reconnecting…")
+            runCatching { socket?.close() }
+        } else {
+            // Elicit a PingResponse; a live device answers in milliseconds, a dead
+            // one stays silent and trips the timeout above on a later tick.
+            send(ApiMessages.PING_REQUEST, ApiMessages.EMPTY)
         }
     }
 
@@ -139,6 +206,7 @@ class EsphomeApiConnection(
     private fun readLoop(helper: FrameHelper) {
         while (running.get()) {
             val frame = helper.readMessage()
+            lastActivityAt = System.currentTimeMillis() // any frame (incl. a PingResponse) proves liveness
             when {
                 frame.type == ApiMessages.PING_REQUEST ->
                     helper.writeMessage(ApiMessages.PING_RESPONSE, ApiMessages.EMPTY)
@@ -165,5 +233,22 @@ class EsphomeApiConnection(
     companion object {
         private const val CONNECT_TIMEOUT_MS = 5_000
         private const val CLIENT_INFO = "ESPHome plugin for JetBrains IDEs"
+        /** How often the watchdog pings / checks for traffic once streaming. */
+        private const val PING_INTERVAL_MS = 10_000L
+        /** No frame for this long ⇒ treat the device as gone and reconnect. */
+        private const val DEAD_TIMEOUT_MS = 25_000L
+
+        /**
+         * Every started-but-not-finished connection. Lets the plugin guarantee no
+         * reader thread survives a plugin unload (which would pin the classloader and
+         * force an IDE restart), independent of tool-window/panel disposal timing —
+         * see the `beforePluginUnload` cleanup.
+         */
+        private val liveConnections = java.util.concurrent.ConcurrentHashMap.newKeySet<EsphomeApiConnection>()
+
+        /** Stop every live connection and wait for its reader thread to exit. */
+        fun stopAllAndAwait() = liveConnections.toList().forEach { it.stopAndAwait(UNLOAD_JOIN_TIMEOUT_MS) }
+
+        private const val UNLOAD_JOIN_TIMEOUT_MS = 2_000L
     }
 }

@@ -29,6 +29,11 @@
             language="yaml"
             implementationClass="io.esphome.clion.validation.EsphomeValidationAnnotator"/>
 
+        <!-- Lexer-based highlighting + structural checks for embedded lambdas (C++). -->
+        <annotator
+            language="yaml"
+            implementationClass="io.esphome.clion.lambda.EsphomeLambdaAnnotator"/>
+
         <lang.documentationProvider
             language="yaml"
             implementationClass="io.esphome.clion.documentation.EsphomeDocumentationProvider"/>
@@ -44,6 +49,14 @@
         <psi.referenceContributor
             language="yaml"
             implementation="io.esphome.clion.references.EsphomeSubstitutionReferenceContributor"/>
+
+        <psi.referenceContributor
+            language="yaml"
+            implementation="io.esphome.clion.references.EsphomeSecretReferenceContributor"/>
+
+        <psi.referenceContributor
+            language="yaml"
+            implementation="io.esphome.clion.references.EsphomeLambdaIdReferenceContributor"/>
 
         <fileBasedIndex implementation="io.esphome.clion.index.EsphomeIncludeIndex"/>
         <fileBasedIndex implementation="io.esphome.clion.index.EsphomeIdIndex"/>
@@ -103,7 +116,18 @@
             anchor="bottom"
             icon="AllIcons.Nodes.Plugin"
             factoryClass="io.esphome.clion.api.toolwindow.EsphomeApiToolWindowFactory"/>
+
+        <!-- Masks values in an open secrets.yaml, revealing the caret's line. -->
+        <postStartupActivity implementation="io.esphome.clion.secrets.EsphomeSecretMaskingStartup"/>
     </extensions>
+
+    <applicationListeners>
+        <!-- Drop live device connections before the plugin unloads, so a reload
+             doesn't require an IDE restart. -->
+        <listener
+            class="io.esphome.clion.EsphomeDynamicPluginCleanup"
+            topic="com.intellij.ide.plugins.DynamicPluginListener"/>
+    </applicationListeners>
 
     <actions>
         <action
