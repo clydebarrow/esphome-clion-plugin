@@ -179,6 +179,11 @@ class CatalogRepository(private val source: CatalogSource) {
     /** All actions (e.g. `lvgl.widget.update`), offered as keys in automation lists. */
     val actions: List<ActionEntry> get() = automations.actions
 
+    private val actionsById: Map<String, ActionEntry> by lazy { automations.actions.associateBy { it.id } }
+
+    /** The action with this id (`switch.turn_on`), or null when it isn't one. */
+    fun action(id: String): ActionEntry? = actionsById[id]
+
     companion object {
         const val INDEX_FILE = "components.index.json"
         const val AUTOMATIONS_INDEX_FILE = "automations.index.json"

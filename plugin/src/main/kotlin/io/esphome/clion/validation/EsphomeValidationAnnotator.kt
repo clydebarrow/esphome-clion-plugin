@@ -10,6 +10,7 @@ import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.editor.Document
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.openapi.util.TextRange
@@ -94,7 +95,17 @@ class EsphomeValidationAnnotator : ExternalAnnotator<EsphomeValidationAnnotator.
         )
 
         return try {
-            val output = CapturingProcessHandler(command).runProcess(TIMEOUT_MS)
+            // Run under the daemon's progress indicator so the subprocess is
+            // *cancellable*: when validation is superseded — or the plugin is
+            // unloaded — the process is destroyed promptly instead of blocking a
+            // thread (and the pending unload write action) for up to TIMEOUT_MS.
+            val handler = CapturingProcessHandler(command)
+            val indicator = ProgressManager.getInstance().progressIndicator
+            val output = if (indicator != null) {
+                handler.runProcessWithProgressIndicator(indicator, TIMEOUT_MS)
+            } else {
+                handler.runProcess(TIMEOUT_MS)
+            }
             val combined = output.stdout + "\n" + output.stderr
             // Errors come only from a failed run (a valid config's echoed dump
             // would be mis-parsed); warnings appear either way, so parse them
@@ -207,19 +218,40 @@ class EsphomeValidationAnnotator : ExternalAnnotator<EsphomeValidationAnnotator.
         val anchor = (diagnostic.anchorLine - 1).coerceIn(0, document.lineCount - 1)
         val line = diagnostic.offendingKey
             ?.takeUnless { ABSENCE_ERROR.containsMatchIn(diagnostic.message) }
-            ?.let { findKeyLine(document, anchor, it) }
+            ?.let { findOffendingLine(document, anchor, it, diagnostic.offendingValue) }
             ?: anchor
         return trimmedLineRange(document, line)
     }
 
-    /** Range of the first literal occurrence of [token] in the document. */
+    /** Range of the first *whole-word* occurrence of [token] in the document. */
     private fun findToken(document: Document, token: String): TextRange? {
-        val index = document.charsSequence.indexOf(token)
+        val index = wholeWordIndex(document.charsSequence, token)
         return if (index < 0) null else TextRange(index, index + token.length)
     }
 
-    private fun findKeyLine(document: Document, fromLine: Int, key: String): Int? {
-        val needle = Regex("""^\s*${Regex.escape(key)}:""")
+    /**
+     * Locate the offending source line at or after [fromLine]. Prefer the exact
+     * `key: value` pair — disambiguating a generic key (`id:`) that repeats in
+     * the block. When that isn't present (ESPHome expanded a shorthand, e.g.
+     * `component.update: m` is dumped as `id: m`), fall back to the line whose
+     * *value* is that id token (the `component.update: m` line). Finally fall
+     * back to the first line with the bare key — or null if none.
+     */
+    private fun findOffendingLine(document: Document, fromLine: Int, key: String, value: String?): Int? {
+        val escapedKey = Regex.escape(key)
+        if (!value.isNullOrEmpty()) {
+            val escapedValue = Regex.escape(value)
+            // `key: value` (tolerating quotes ESPHome may strip/add around the value).
+            matchLine(document, fromLine, Regex("""^\s*$escapedKey:\s*["']?$escapedValue["']?\s*$"""))?.let { return it }
+            // The value as some key's whole value — finds the shorthand the dump expanded.
+            if (value.matches(ID_TOKEN)) {
+                matchLine(document, fromLine, Regex(""":\s*$escapedValue\s*$"""))?.let { return it }
+            }
+        }
+        return matchLine(document, fromLine, Regex("""^\s*$escapedKey:"""))
+    }
+
+    private fun matchLine(document: Document, fromLine: Int, needle: Regex): Int? {
         val text = document.charsSequence
         for (line in fromLine until document.lineCount) {
             val slice = text.subSequence(document.getLineStartOffset(line), document.getLineEndOffset(line))
@@ -244,5 +276,28 @@ class EsphomeValidationAnnotator : ExternalAnnotator<EsphomeValidationAnnotator.
         private val executableWarningShown = java.util.concurrent.atomic.AtomicBoolean(false)
         private val ABSENCE_ERROR =
             Regex("""(?i)\b(missing|required|must include|must specify|must provide|not provided)\b""")
+        /** An id token, so the value-as-id fallback only fires on identifier values. */
+        private val ID_TOKEN = Regex("""[A-Za-z_][A-Za-z0-9_]*""")
+
+        /**
+         * Index of the first occurrence of [token] in [text] not bordered by an
+         * identifier char (letter/digit/`_`), or -1. Whole-word so a pin like
+         * `GPIO3` doesn't match inside `GPIO38` (nor `sensor` inside `my_sensor`).
+         */
+        fun wholeWordIndex(text: CharSequence, token: String): Int {
+            if (token.isEmpty()) return -1
+            var from = 0
+            while (true) {
+                val index = text.indexOf(token, from)
+                if (index < 0) return -1
+                val borderedBefore = index > 0 && isWordChar(text[index - 1])
+                val after = index + token.length
+                val borderedAfter = after < text.length && isWordChar(text[after])
+                if (!borderedBefore && !borderedAfter) return index
+                from = index + 1
+            }
+        }
+
+        private fun isWordChar(c: Char): Boolean = c.isLetterOrDigit() || c == '_'
     }
 }

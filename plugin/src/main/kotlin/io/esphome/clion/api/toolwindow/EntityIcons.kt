@@ -47,6 +47,7 @@ object EntityIcons {
         "media_player" to "speaker",
         "camera" to "camera",
         "valve" to "valve",
+        "event" to "bell-ring-outline",
     )
 
     private val DEVICE_CLASS_ICONS = mapOf(

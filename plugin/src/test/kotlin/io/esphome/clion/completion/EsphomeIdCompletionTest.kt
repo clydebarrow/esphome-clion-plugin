@@ -53,4 +53,64 @@ class EsphomeIdCompletionTest : BasePlatformTestCase() {
         )
         assertContainsElements(items, "bus_a")
     }
+
+    fun `test domain action shorthand offers only ids of that domain`() {
+        val items = complete(
+            """
+            esphome:
+              name: x
+            switch:
+              - platform: gpio
+                id: relay_sw
+                pin: 4
+            sensor:
+              - platform: template
+                id: my_temp
+                on_value:
+                  - switch.turn_on: <caret>
+            """.trimIndent(),
+        )
+        assertContainsElements(items, "relay_sw")
+        assertDoesntContain(items, "my_temp") // a sensor is not a switch
+    }
+
+    fun `test lambda id call offers in-scope ids`() {
+        val items = complete(
+            """
+            esphome:
+              name: x
+            switch:
+              - platform: gpio
+                id: relay_sw
+                pin: 4
+            button:
+              - platform: template
+                name: B
+                on_press:
+                  - lambda: |-
+                      id(<caret>
+            """.trimIndent(),
+        )
+        assertContainsElements(items, "relay_sw")
+    }
+
+    fun `test component update shorthand offers any in-scope id`() {
+        val items = complete(
+            """
+            esphome:
+              name: x
+            switch:
+              - platform: gpio
+                id: relay_sw
+                pin: 4
+            sensor:
+              - platform: template
+                id: my_temp
+                on_value:
+                  - component.update: <caret>
+            """.trimIndent(),
+        )
+        // component.* references any component by id, regardless of type.
+        assertContainsElements(items, "relay_sw", "my_temp")
+    }
 }

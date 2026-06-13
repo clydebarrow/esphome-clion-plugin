@@ -63,6 +63,9 @@ object EsphomeIdReferences {
         if (keyValue.keyText == ID_KEY) {
             return EsphomeYaml.isMergeTaggedId(scalar) && scalar.textValue.matches(ID_TOKEN)
         }
+        // A tagged scalar (`!secret`, `!lambda`, `!include`, …) has its own
+        // meaning — it is not a plain id reference even if it reads like one.
+        if (scalar.tag != null) return false
         return scalar.textValue.matches(ID_TOKEN)
     }
 

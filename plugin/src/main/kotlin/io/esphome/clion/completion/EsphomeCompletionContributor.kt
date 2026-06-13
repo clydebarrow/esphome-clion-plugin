@@ -18,6 +18,7 @@ import io.esphome.clion.catalog.ConfigEntryType
 import io.esphome.clion.catalog.childEntriesAt
 import io.esphome.clion.psi.EsphomeYaml
 import io.esphome.clion.references.EsphomeIdReferences
+import io.esphome.clion.references.EsphomeLambda
 import io.esphome.clion.services.EsphomeCatalogService
 import io.esphome.clion.services.EsphomeIds
 import io.esphome.clion.services.EsphomeIncludeGraph
@@ -86,6 +87,10 @@ private object EsphomeCompletionProvider : CompletionProvider<CompletionParamete
         // list with in-use ids, sibling keys, and other words scraped from the
         // file that are irrelevant to the current key/value position.
         result.stopHere()
+
+        // Inside a lambda, `id(<caret>` → in-scope ids (the C++ body is otherwise
+        // opaque, so no key/value completion applies there).
+        if (addLambdaIdCompletions(parameters, position, result)) return
 
         val repo = EsphomeCatalogService.getInstance().repository
         val keyValue = position.parentOfType<YAMLKeyValue>()
@@ -237,6 +242,15 @@ private object EsphomeCompletionProvider : CompletionProvider<CompletionParamete
             return
         }
 
+        // Automation action shorthand (`- switch.turn_on: relay`,
+        // `- component.update: my_sensor`): the scalar value names a component by
+        // id. `component.*` references any component; a `<domain>.<verb>` action
+        // references a component of that domain.
+        repo.action(keyValue.keyText)?.let { action ->
+            addActionIdCompletions(repo, position, action.domain, result)
+            return
+        }
+
         // lvgl values come from the language schema (see addKeyCompletions).
         if (path.firstOrNull() == "lvgl") {
             val node = EsphomeLangSchemaService.getInstance().repository
@@ -279,16 +293,69 @@ private object EsphomeCompletionProvider : CompletionProvider<CompletionParamete
         referencesComponent: String,
         result: CompletionResultSet,
     ) {
-        val virtualFile = position.containingFile.originalFile.virtualFile ?: return
+        addIdLookups(idsInScope(repo, position).filter { EsphomeIdReferences.satisfies(repo, it, referencesComponent) }, result)
+    }
+
+    /**
+     * Offer ids for an automation action's shorthand-scalar argument. A
+     * `<domain>.<verb>` action references a component of [actionDomain], so we
+     * filter to ids of that type; the generic `component.*` actions (and any
+     * action whose domain matches no declared id) reference *any* component, so
+     * fall back to all in-scope ids. A `core` action (`delay`, `lambda`, the
+     * control-flow forms) takes no id — its filtered list is empty and it isn't
+     * generic, so nothing is offered.
+     */
+    private fun addActionIdCompletions(
+        repo: CatalogRepository,
+        position: PsiElement,
+        actionDomain: String,
+        result: CompletionResultSet,
+    ) {
+        val all = idsInScope(repo, position)
+        val typed = all.filter { EsphomeIdReferences.satisfies(repo, it, actionDomain) }
+        val candidates = when {
+            typed.isNotEmpty() -> typed
+            actionDomain in GENERIC_ID_ACTION_DOMAINS -> all
+            else -> return
+        }
+        addIdLookups(candidates, result)
+    }
+
+    /** In-scope id declarations we can fully resolve (templated names skipped). */
+    private fun idsInScope(repo: CatalogRepository, position: PsiElement): List<EsphomeIds.Declaration> {
+        val virtualFile = position.containingFile.originalFile.virtualFile ?: return emptyList()
         val project = position.project
         val scope = EsphomeIncludeGraph.getInstance(project).connectedFiles(virtualFile)
-        EsphomeIds.getInstance(project).declarationsIn(scope)
-            .filter { EsphomeIdReferences.satisfies(repo, it, referencesComponent) }
+        return EsphomeIds.getInstance(project).declarationsIn(scope)
             .filter { !it.effectiveName.contains('$') } // skip ids we couldn't fully expand
-            .forEach { declaration ->
-                val type = declaration.platform?.let { "${declaration.domain}.$it" } ?: declaration.domain
-                result.addElement(LookupElementBuilder.create(declaration.effectiveName).withTypeText(type))
-            }
+    }
+
+    // --- lambda id() completion --------------------------------------------
+
+    /**
+     * When the caret sits just after `id(` inside a lambda body, offer the in-scope
+     * ids (`id(rel<caret>`). ESPHome's `id(x)` can name any component/entity, so all
+     * ids are offered, prefix-matched on what's typed. Returns true when handled.
+     */
+    private fun addLambdaIdCompletions(
+        parameters: CompletionParameters,
+        position: PsiElement,
+        result: CompletionResultSet,
+    ): Boolean {
+        val scalar = position.parentOfType<YAMLScalar>() ?: return false
+        if (!EsphomeLambda.isLambda(scalar)) return false
+        val caret = (parameters.offset - scalar.textRange.startOffset).coerceIn(0, scalar.text.length)
+        val match = ID_CALL_PREFIX.find(scalar.text.substring(0, caret)) ?: return false
+        val repo = EsphomeCatalogService.getInstance().repository
+        addIdLookups(idsInScope(repo, position), result.withPrefixMatcher(match.groupValues[1]))
+        return true
+    }
+
+    private fun addIdLookups(declarations: List<EsphomeIds.Declaration>, result: CompletionResultSet) {
+        declarations.forEach { declaration ->
+            val type = declaration.platform?.let { "${declaration.domain}.$it" } ?: declaration.domain
+            result.addElement(LookupElementBuilder.create(declaration.effectiveName).withTypeText(type))
+        }
     }
 
     // --- shared ------------------------------------------------------------
@@ -331,4 +398,14 @@ private object EsphomeCompletionProvider : CompletionProvider<CompletionParamete
         replace('\n', ' ').let { if (it.length > 80) it.take(77) + "…" else it }
 
     private val IDENTIFIER_PREFIX = Regex("[A-Za-z0-9_]*")
+
+    /** `id(` (a standalone call) with the partial id typed so far, anchored at the caret. */
+    private val ID_CALL_PREFIX = Regex("""(?<![A-Za-z0-9_])id\s*\(\s*([A-Za-z0-9_]*)$""")
+
+    /**
+     * Action domains whose shorthand id argument references *any* component
+     * rather than one of a specific type — `component.update`/`suspend`/`resume`
+     * target any (polling) component by id.
+     */
+    private val GENERIC_ID_ACTION_DOMAINS = setOf("component")
 }

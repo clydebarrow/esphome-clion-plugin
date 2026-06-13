@@ -68,4 +68,15 @@ class EsphomeDocRendererTest {
         assertTrue(html.contains("<code>wifi</code>"))
         assertTrue(html.contains("<code>network</code>")) // dependency
     }
+
+    @Test
+    fun `renders a platform domain with its platforms and docs link`() {
+        val html = EsphomeDocRenderer.render(EsphomeTarget.Domain("sensor", listOf("dht", "adc", "bme280")))
+
+        assertTrue(html.contains("<b>sensor</b>"))
+        assertTrue(html.contains("Platform domain"))
+        assertTrue(html.contains("Platforms (3)"))
+        assertTrue(html.contains("<code>dht</code>"))
+        assertTrue(html.contains("""<a href="https://esphome.io/components/sensor/">"""))
+    }
 }

@@ -12,6 +12,13 @@ data class EsphomeDiagnostic(
     val message: String,
     /** The offending YAML key, when ESPHome echoed one — used to refine the line. */
     val offendingKey: String?,
+    /**
+     * The value ESPHome echoed beside [offendingKey], when any — disambiguates a
+     * generic key that repeats in the block (e.g. two `id:` lines) and helps
+     * locate the source line when ESPHome expanded a shorthand (`x.update: m`
+     * dumps as `id: m`, whose value `m` still appears in the source).
+     */
+    val offendingValue: String? = null,
     /** A literal token to locate in the file when there is no key/line (e.g. a bad platform value). */
     val searchToken: String? = null,
     /** Highlight severity: errors fail the build; warnings are advisory. */
@@ -63,7 +70,10 @@ object EsphomeConfigOutputParser {
             .distinct()
             .mapNotNull { message ->
                 val token = warningToken(message) ?: return@mapNotNull null
-                EsphomeDiagnostic(targetFile, 0, message, null, token, EsphomeSeverity.WARNING)
+                EsphomeDiagnostic(
+                    targetFile, 0, message, offendingKey = null,
+                    searchToken = token, severity = EsphomeSeverity.WARNING,
+                )
             }
             .toList()
 
@@ -110,7 +120,9 @@ object EsphomeConfigOutputParser {
             if (trimmed == "Failed config") {
                 failedSeen = true
             } else if (includeTopLevelErrors && failedSeen && isTopLevelError(lines[i])) {
-                diagnostics += EsphomeDiagnostic(targetFile, 0, trimmed, null, searchToken(trimmed))
+                diagnostics += EsphomeDiagnostic(
+                    targetFile, 0, trimmed, offendingKey = null, searchToken = searchToken(trimmed),
+                )
             }
             i++
         }
@@ -134,9 +146,13 @@ object EsphomeConfigOutputParser {
             if (isProse) {
                 message.add(trimmed)
             } else if (message.isNotEmpty()) {
-                val offendingKey = trimmed.takeIf { YAML_KEY.matches(it) }
-                    ?.substringBefore(':')?.takeIf { it.isNotBlank() }
-                diagnostics += EsphomeDiagnostic(file, anchorLine, message.joinToString(" "), offendingKey)
+                val isKey = YAML_KEY.matches(trimmed)
+                val offendingKey = trimmed.takeIf { isKey }?.substringBefore(':')?.takeIf { it.isNotBlank() }
+                val offendingValue = trimmed.takeIf { isKey }
+                    ?.substringAfter(':', "")?.trim()?.takeIf { it.isNotBlank() }
+                diagnostics += EsphomeDiagnostic(
+                    file, anchorLine, message.joinToString(" "), offendingKey, offendingValue,
+                )
                 message.clear()
             }
         }
