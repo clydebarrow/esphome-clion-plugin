@@ -121,14 +121,6 @@
         <postStartupActivity implementation="io.esphome.clion.secrets.EsphomeSecretMaskingStartup"/>
     </extensions>
 
-    <applicationListeners>
-        <!-- Drop live device connections before the plugin unloads, so a reload
-             doesn't require an IDE restart. -->
-        <listener
-            class="io.esphome.clion.EsphomeDynamicPluginCleanup"
-            topic="com.intellij.ide.plugins.DynamicPluginListener"/>
-    </applicationListeners>
-
     <actions>
         <action
             id="io.esphome.clion.api.OpenDeviceWindow"
