@@ -50,7 +50,6 @@ class EsphomeApiConnection(
 
     fun start() {
         if (!running.compareAndSet(false, true)) return
-        liveConnections.add(this)
         thread = Thread({ run() }, "esphome-api-$host").apply { isDaemon = true; start() }
     }
 
@@ -126,7 +125,6 @@ class EsphomeApiConnection(
             watchdog?.cancel(false)
             watchdog = null
             frameHelper = null
-            liveConnections.remove(this)
             runCatching { socket?.close() }
             listener.onClosed()
         }
@@ -237,18 +235,5 @@ class EsphomeApiConnection(
         private const val PING_INTERVAL_MS = 10_000L
         /** No frame for this long ⇒ treat the device as gone and reconnect. */
         private const val DEAD_TIMEOUT_MS = 25_000L
-
-        /**
-         * Every started-but-not-finished connection. Lets the plugin guarantee no
-         * reader thread survives a plugin unload (which would pin the classloader and
-         * force an IDE restart), independent of tool-window/panel disposal timing —
-         * see the `beforePluginUnload` cleanup.
-         */
-        private val liveConnections = java.util.concurrent.ConcurrentHashMap.newKeySet<EsphomeApiConnection>()
-
-        /** Stop every live connection and wait for its reader thread to exit. */
-        fun stopAllAndAwait() = liveConnections.toList().forEach { it.stopAndAwait(UNLOAD_JOIN_TIMEOUT_MS) }
-
-        private const val UNLOAD_JOIN_TIMEOUT_MS = 2_000L
     }
 }

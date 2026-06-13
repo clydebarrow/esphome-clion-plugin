@@ -7,6 +7,15 @@ release.
 
 ## [Unreleased]
 
+## [0.13.1]
+
+### Fixed
+
+- Removed a `DynamicPluginListener` whose Kotlin default-method bridges
+  (`beforePluginsLoaded`/`pluginsLoaded`) were binary-incompatible with IntelliJ
+  IDEA 2025.1. It only tore down device connections before a plugin unload, which
+  already happens on tool-window/project dispose — so nothing is lost.
+
 ## [0.13.0]
 
 ### Added
