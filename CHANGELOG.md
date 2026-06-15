@@ -7,6 +7,14 @@ release.
 
 ## [Unreleased]
 
+## [0.14.1]
+
+### Fixed
+
+- The editor floating toolbar's applicability check now reads PSI entirely under
+  a read action (the `PSI_FILE` lookup was happening before the lock), so it
+  no longer risks violating the platform threading rules when invoked off the EDT.
+
 ## [0.14.0]
 
 ### Added

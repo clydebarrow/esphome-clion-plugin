@@ -24,10 +24,13 @@ class EsphomeEditorFloatingToolbarProvider : AbstractFloatingToolbarProvider(GRO
     /** Stay visible at all times (don't fade out when idle), so the actions are always at hand. */
     override val autoHideable: Boolean = false
 
-    override fun isApplicable(dataContext: DataContext): Boolean {
-        val file = dataContext.getData(CommonDataKeys.PSI_FILE) as? YAMLFile ?: return false
-        return runReadAction { EsphomeYaml.isStandaloneConfig(file) }
-    }
+    override fun isApplicable(dataContext: DataContext): Boolean =
+        // Both the PSI_FILE lookup and isStandaloneConfig touch PSI, so the whole
+        // thing runs under a read action — isApplicable may be called off the EDT.
+        runReadAction {
+            val file = dataContext.getData(CommonDataKeys.PSI_FILE) as? YAMLFile
+            file != null && EsphomeYaml.isStandaloneConfig(file)
+        }
 
     /**
      * Show it right away. A non-auto-hideable toolbar isn't revealed by the
