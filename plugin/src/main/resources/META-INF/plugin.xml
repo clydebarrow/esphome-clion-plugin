@@ -119,6 +119,11 @@
 
         <!-- Masks values in an open secrets.yaml, revealing the caret's line. -->
         <postStartupActivity implementation="io.esphome.clion.secrets.EsphomeSecretMaskingStartup"/>
+
+        <!-- Floating toolbar (top-right of the editor) grouping the common
+             ESPHome actions on a standalone config. -->
+        <editorFloatingToolbarProvider
+            implementation="io.esphome.clion.run.EsphomeEditorFloatingToolbarProvider"/>
     </extensions>
 
     <actions>
@@ -131,5 +136,26 @@
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
             <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
         </action>
+
+        <!-- Buttons shown on the editor floating toolbar (see
+             EsphomeEditorFloatingToolbarProvider). -->
+        <action
+            id="io.esphome.clion.run.RunFromEditor"
+            class="io.esphome.clion.run.EsphomeRunAction"
+            text="Run ESPHome Config"
+            description="Compile, upload and view logs for this ESPHome config (esphome run)"
+            icon="AllIcons.Actions.Execute"/>
+        <action
+            id="io.esphome.clion.run.LogsFromEditor"
+            class="io.esphome.clion.run.EsphomeLogsAction"
+            text="ESPHome Logs"
+            description="Stream this device's logs (esphome logs)"
+            icon="AllIcons.Debugger.Console"/>
+
+        <group id="io.esphome.clion.EditorFloatingToolbar">
+            <reference ref="io.esphome.clion.run.RunFromEditor"/>
+            <reference ref="io.esphome.clion.run.LogsFromEditor"/>
+            <reference ref="io.esphome.clion.api.OpenDeviceWindow"/>
+        </group>
     </actions>
 </idea-plugin>

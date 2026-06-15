@@ -7,6 +7,26 @@ release.
 
 ## [Unreleased]
 
+## [0.14.0]
+
+### Added
+
+- An **editor floating toolbar** (top-right of the editor, on a standalone
+  ESPHome config) puts the common actions in one place: **Run** (`esphome run`),
+  **Logs** (`esphome logs`), and **Open Device Window**. It stays visible while
+  you're in the config. The Run/Logs buttons reuse a matching run configuration
+  if you have one, otherwise create a temporary one from your default backend.
+
+### Fixed
+
+- A typed id reference (e.g. `rtttl:`'s `output:`) is no longer falsely flagged
+  "Cannot resolve id reference" when the same id is also passed to an **action**
+  elsewhere (e.g. `output.set_level: { id: x }`). Those action arguments are
+  `use_id` *references*, but the id index was recording them as *declarations*;
+  sharing the name, the action's entry (with the action's own domain) shadowed
+  the real declaration. The index now only records genuine declarations — an
+  `id:` owned by a plain component/platform key, never a dotted action key.
+
 ## [0.13.2]
 
 ### Fixed

@@ -52,6 +52,39 @@ class EsphomeIdInspectionTest : BasePlatformTestCase() {
         assertFalse(descriptions().any { it.contains("Cannot resolve id reference") })
     }
 
+    fun `test action id argument does not shadow the real declaration`() {
+        // Regression: `output.set_level: { id: buzzer_out }` etc. are `use_id`
+        // references, not declarations. They must not be indexed as `button`-domain
+        // declarations that overwrite the real `output`/ledc one (id index is keyed
+        // by name), which made `rtttl: output: buzzer_out` falsely "unresolvable".
+        myFixture.enableInspections(EsphomeUnresolvedIdInspection())
+        myFixture.configureByText(
+            "device.yaml",
+            """
+            esphome:
+              name: x
+            output:
+              - platform: ledc
+                id: buzzer_out
+                pin: GPIO48
+            rtttl:
+              output: buzzer_out
+            button:
+              - platform: template
+                id: beep
+                on_press:
+                  - output.turn_on: buzzer_out
+                  - output.ledc.set_frequency:
+                      id: buzzer_out
+                      frequency: 1kHz
+                  - output.set_level:
+                      id: buzzer_out
+                      level: 50%
+            """.trimIndent(),
+        )
+        assertFalse(descriptions().any { it.contains("Cannot resolve id reference") })
+    }
+
     fun `test quick-fix changes an unresolved reference to a near match`() {
         myFixture.enableInspections(EsphomeUnresolvedIdInspection())
         myFixture.configureByText(

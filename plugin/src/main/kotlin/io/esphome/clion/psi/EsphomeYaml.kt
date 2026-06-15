@@ -89,6 +89,26 @@ object EsphomeYaml {
     }
 
     /**
+     * Whether an `id:` key *declares* the enclosing component (naming it) rather
+     * than passing a `use_id` reference as an action/condition argument — e.g.
+     * `output.set_level: { id: buzzer_out, level: 50% }` or
+     * `lvgl.label.update: { id: lbl_day }`. Action and condition keys are
+     * `domain.verb` (dotted); a real component or platform key never contains a
+     * dot, so an `id:` whose enclosing mapping is owned by a dotted key is a
+     * reference, not a declaration. Also excludes `!extend`/`!remove` package
+     * overrides. Without this, an action's `id:` argument would be indexed as a
+     * declaration and — sharing the name with the real one — shadow it.
+     */
+    fun isDeclarationId(idKeyValue: YAMLKeyValue): Boolean {
+        if (idKeyValue.keyText != ID_KEY) return false
+        val value = idKeyValue.value as? YAMLScalar ?: return false
+        if (isMergeTaggedId(value)) return false
+        val mapping = idKeyValue.parent as? YAMLMapping ?: return false
+        val ownerKey = pathOfMapping(mapping).lastOrNull() ?: return false
+        return '.' !in ownerKey
+    }
+
+    /**
      * True when [keyValue]'s value sits on the same line as its key (`key: val`)
      * — a genuine value position. When false, the "value" is on a following
      * line, which for a half-typed entry means the YAML parser has mis-attached

@@ -43,4 +43,36 @@ class EsphomeIdsPsiFallbackTest : BasePlatformTestCase() {
         // text_font's value is a use, not a declaration — not collected.
         assertEquals(setOf("font_date", "my_temp", "main_page", "lbl_date"), byName.keys)
     }
+
+    fun `test action id arguments are not collected as declarations`() {
+        // `output.set_level: { id: buzzer_out }` is a `use_id` reference. Only the
+        // real `output`/ledc declaration must be collected — with its own domain,
+        // not the `button` domain of the action that references it.
+        val file = myFixture.configureByText(
+            "device.yaml",
+            """
+            esphome:
+              name: x
+            output:
+              - platform: ledc
+                id: buzzer_out
+                pin: GPIO48
+            button:
+              - platform: template
+                id: beep
+                on_press:
+                  - output.ledc.set_frequency:
+                      id: buzzer_out
+                      frequency: 1kHz
+                  - output.set_level:
+                      id: buzzer_out
+                      level: 50%
+            """.trimIndent(),
+        ).virtualFile
+
+        val ids = EsphomeIds.getInstance(project).declarationsByPsi(listOf(file))
+        // buzzer_out appears once — the declaration — with domain output (not button).
+        assertEquals(listOf("output"), ids.filter { it.name == "buzzer_out" }.map { it.domain })
+        assertEquals("button", ids.first { it.name == "beep" }.domain)
+    }
 }
