@@ -88,9 +88,8 @@ class EsphomeIds(private val project: Project) {
         for (file in scope) {
             val yaml = psiManager.findFile(file) as? YAMLFile ?: continue
             for (keyValue in PsiTreeUtil.findChildrenOfType(yaml, YAMLKeyValue::class.java)) {
-                if (keyValue.keyText != ID_KEY) continue
+                if (!EsphomeYaml.isDeclarationId(keyValue)) continue
                 val value = keyValue.value as? YAMLScalar ?: continue
-                if (EsphomeYaml.isMergeTaggedId(value)) continue
                 val name = value.textValue.ifEmpty { continue }
                 val parentMapping = keyValue.parent as? YAMLMapping ?: continue
                 val domain = EsphomeYaml.pathOfMapping(parentMapping).firstOrNull() ?: continue
@@ -103,8 +102,6 @@ class EsphomeIds(private val project: Project) {
     }
 
     companion object {
-        private const val ID_KEY = "id"
-
         fun getInstance(project: Project): EsphomeIds = project.service()
     }
 }

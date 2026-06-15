@@ -39,7 +39,7 @@ data class IdDeclaration(val offset: Int, val domain: String, val platform: Stri
 class EsphomeIdIndex : FileBasedIndexExtension<String, IdDeclaration>() {
 
     override fun getName(): ID<String, IdDeclaration> = NAME
-    override fun getVersion(): Int = 2
+    override fun getVersion(): Int = 3
     override fun dependsOnFileContent(): Boolean = true
     override fun getKeyDescriptor(): KeyDescriptor<String> = EnumeratorStringDescriptor.INSTANCE
     override fun getValueExternalizer(): DataExternalizer<IdDeclaration> = Externalizer
@@ -50,11 +50,11 @@ class EsphomeIdIndex : FileBasedIndexExtension<String, IdDeclaration>() {
         val yaml = inputData.psiFile as? YAMLFile ?: return@DataIndexer emptyMap()
         val result = HashMap<String, IdDeclaration>()
         for (keyValue in PsiTreeUtil.findChildrenOfType(yaml, YAMLKeyValue::class.java)) {
-            if (keyValue.keyText != ID_KEY) continue
+            // Only genuine declarations — not `!extend`/`!remove` overrides, and not
+            // `id:` passed as a `use_id` argument to an action (`output.set_level:
+            // { id: x }`), which would otherwise shadow the real declaration here.
+            if (!EsphomeYaml.isDeclarationId(keyValue)) continue
             val value = keyValue.value as? YAMLScalar ?: continue
-            // `id: !extend X` / `id: !remove X` reference an existing declaration
-            // in a package — not a new one — so they aren't indexed as declarations.
-            if (EsphomeYaml.isMergeTaggedId(value)) continue
             // Templated names (`id: ${prefix}_relay`) are indexed raw and expanded
             // at query time (the index is per-file, so it can't resolve them here).
             val name = value.textValue
@@ -85,7 +85,6 @@ class EsphomeIdIndex : FileBasedIndexExtension<String, IdDeclaration>() {
     }
 
     companion object {
-        private const val ID_KEY = "id"
         val NAME: ID<String, IdDeclaration> = ID.create("io.esphome.clion.index.ids")
     }
 }
