@@ -76,6 +76,6 @@ class EsphomeRunConfigurationEditor : SettingsEditor<EsphomeRunConfiguration>() 
         row("Extra arguments:") { cell(extraArgsField).align(AlignX.FILL) }
             .rowComment("Appended after the config file, e.g. <code>-s name value</code> or <code>--only-generate</code>.")
         row { cell(emulateTerminalBox) }
-            .rowComment("Smoother compile/OTA progress. Leave off for serial upload/logs.")
+            .rowComment("ANSI colour and an in-place progress bar (serial included). On by default.")
     }
 }
