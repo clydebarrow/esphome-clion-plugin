@@ -35,7 +35,7 @@ class EsphomeRunConfigurationEditor : SettingsEditor<EsphomeRunConfiguration>() 
     private val deviceField = JBTextField()
     private val extraArgsField = JBTextField()
     private val resetBeforeLogsBox = JBCheckBox("Reset device before starting logs")
-    private val emulateTerminalBox = JBCheckBox("Emulate a terminal (in-place progress; not for serial)")
+    private val emulateTerminalBox = JBCheckBox("Emulate a terminal (ANSI colour and in-place progress)")
 
     override fun resetEditorFrom(s: EsphomeRunConfiguration) {
         configField.text = s.configPath.orEmpty()

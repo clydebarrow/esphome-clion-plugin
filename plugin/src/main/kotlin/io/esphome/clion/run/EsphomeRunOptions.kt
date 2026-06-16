@@ -37,11 +37,12 @@ class EsphomeRunOptions : RunConfigurationOptions() {
     var extraArgs: String? by string("")
 
     /**
-     * Run under a pseudo-terminal so progress updates in place instead of
-     * scrolling. Off by default: it suits OTA, but a PTY interferes with serial
-     * upload/logs (buffered/suppressed output, empty serial `logs`).
+     * Run under a pseudo-terminal so esptool emits ANSI colour and an in-place
+     * progress bar. On by default — the handler now keeps the serial upload bar
+     * visible (see [EsphomeProcessHandler]), so there's no longer a serial
+     * downside. Turn it off only if a specific tool misbehaves under a PTY.
      */
-    var emulateTerminal: Boolean by property(false)
+    var emulateTerminal: Boolean by property(true)
 
     companion object {
         val DEFAULT_DOCKER_IMAGE: String get() = EsphomeSettings.DEFAULT_DOCKER_IMAGE

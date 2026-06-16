@@ -7,6 +7,25 @@ release.
 
 ## [Unreleased]
 
+## [0.15.0]
+
+### Changed
+
+- **"Emulate a terminal"** is now **on by default** for new run configurations,
+  so runs get ANSI colour and an in-place progress bar out of the box. With the
+  serial progress-bar fix below there's no longer a serial downside; turn it off
+  per-config if a tool misbehaves under a PTY.
+
+### Fixed
+
+- The serial **upload progress bar** is no longer a blank line until the flash
+  finishes (with "Emulate a terminal" on, or for OTA). esptool draws the bar with
+  carriage-return frames and no newline; by the time they reach the console a read
+  often ends on the next frame's leading `\r`, and IntelliJ's console renders a
+  chunk ending in `\r` as an empty line. The run handler now holds a trailing `\r`
+  back and prepends it to the next chunk, so the bar redraws in place (a real
+  terminal already worked because it leaves the glyphs on screen).
+
 ## [0.14.1]
 
 ### Fixed

@@ -4,7 +4,6 @@ import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.configurations.PathEnvironmentVariableUtil
 import com.intellij.execution.configurations.PtyCommandLine
 import com.intellij.execution.process.CapturingProcessHandler
-import com.intellij.execution.process.KillableColoredProcessHandler
 import com.intellij.execution.process.ProcessHandler
 import com.intellij.execution.process.ProcessTerminatedListener
 import com.intellij.execution.runners.ExecutionEnvironment
@@ -24,11 +23,11 @@ class EsphomeCommandLineState(
 
     override fun startProcess(): ProcessHandler {
         val base = buildCommandLine()
-        // Run under a pseudo-terminal when it helps: ESPHome/PlatformIO then think
-        // they have a TTY and emit ANSI-colored logs and in-place `\r` progress.
-        // Force it for device operations over the network (OTA upload/logs), where
-        // there's no downside — but never for serial, where a PTY buffers/empties
-        // the output. The per-config "Emulate a terminal" still forces it too.
+        // Run under a pseudo-terminal so ESPHome/esptool see a TTY and emit
+        // ANSI-colored logs and an in-place `\r` progress bar. On by default via
+        // "Emulate a terminal" (serial included — EsphomeProcessHandler keeps the
+        // upload bar visible). Network ops (OTA upload/logs) still force it even if
+        // the option is turned off, since there's no serial port to worry about.
         val networkOp = configuration.command.usesDevice &&
             EsphomeCommandLines.isNetworkDevice(configuration.device)
         val commandLine = if (configuration.emulateTerminal || networkOp) {
@@ -36,7 +35,9 @@ class EsphomeCommandLineState(
         } else {
             base
         }
-        val handler = KillableColoredProcessHandler(commandLine)
+        // EsphomeProcessHandler (not a bare KillableColoredProcessHandler) so
+        // esptool's in-place `\r` upload progress stays visible in the console.
+        val handler = EsphomeProcessHandler(commandLine)
         ProcessTerminatedListener.attach(handler)
         return handler
     }
