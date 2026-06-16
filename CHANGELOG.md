@@ -7,6 +7,13 @@ release.
 
 ## [Unreleased]
 
+### Fixed
+
+- The carriage-return coalescer (serial progress-bar fix) could still emit a
+  chunk ending in `\r` when a held `\r` was prepended to a chunk that was itself
+  one or more carriage returns — briefly reintroducing a blank progress line. It
+  now strips every trailing `\r`, not just one.
+
 ## [0.15.0]
 
 ### Changed
