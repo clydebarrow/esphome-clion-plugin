@@ -27,6 +27,15 @@ class EsphomeSettings : SimplePersistentStateComponent<EsphomeSettings.State>(St
         /** Default image for the Docker backend. */
         var dockerImage: String? by string(DEFAULT_DOCKER_IMAGE)
 
+        /**
+         * Default serial flashing baud rate (`--upload_speed`) new run configs
+         * start with. Blank uses ESPHome's default/configured speed.
+         */
+        var defaultUploadSpeed: String? by string(DEFAULT_UPLOAD_SPEED)
+
+        /** Whether new `logs`/`run` configs reset the device before logs (`--reset`). */
+        var defaultResetBeforeLogs: Boolean by property(false)
+
         /** esphome version to install in the managed venv; blank = latest. */
         var esphomeVersion: String? by string("")
 
@@ -58,6 +67,9 @@ class EsphomeSettings : SimplePersistentStateComponent<EsphomeSettings.State>(St
     companion object {
         const val DEFAULT_BACKEND = "local"
         const val DEFAULT_DOCKER_IMAGE = "ghcr.io/esphome/esphome:latest"
+
+        /** esptool's default serial flashing baud rate. */
+        const val DEFAULT_UPLOAD_SPEED = "460800"
 
         fun getInstance(): EsphomeSettings = service()
     }

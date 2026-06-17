@@ -13,6 +13,7 @@ import com.intellij.ui.dsl.builder.bindSelected
 import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.columns
 import com.intellij.ui.dsl.builder.panel
+import io.esphome.clion.run.EsphomeCommand
 import io.esphome.clion.run.EsphomeVenv
 
 /** Settings → Tools → ESPHome. */
@@ -55,6 +56,21 @@ class EsphomeSettingsConfigurable : BoundConfigurable("ESPHome") {
                     )
                     .columns(40)
             }.rowComment("Image new Docker run configurations start with.")
+            row("Default baud rate:") {
+                comboBox(EsphomeCommand.COMMON_UPLOAD_SPEEDS)
+                    .applyToComponent { isEditable = true }
+                    .bindItem(
+                        { EsphomeSettings.getInstance().state.defaultUploadSpeed ?: "" },
+                        { EsphomeSettings.getInstance().state.defaultUploadSpeed = it?.trim().orEmpty() },
+                    )
+            }.rowComment("Serial flashing speed (--upload_speed) new run configurations start with. Blank = ESPHome default.")
+            row {
+                checkBox("Reset device before logs by default")
+                    .bindSelected(
+                        { EsphomeSettings.getInstance().state.defaultResetBeforeLogs },
+                        { EsphomeSettings.getInstance().state.defaultResetBeforeLogs = it },
+                    )
+            }.rowComment("Adds --reset to new run/logs configurations so the board restarts when logs begin.")
             row {
                 checkBox("Mount a shared cache for Docker")
                     .bindSelected(

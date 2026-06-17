@@ -33,6 +33,14 @@ class EsphomeRunOptions : RunConfigurationOptions() {
     /** Reset the device before starting serial logs (`--reset`), for `logs`/`run`. */
     var resetBeforeLogs: Boolean by property(false)
 
+    /**
+     * Optional `--upload_speed` — the serial flashing baud rate — for `run` and
+     * `upload`. Blank uses ESPHome's default/configured speed. Defaults to the
+     * plugin's default-baud setting (read when the config is created); ignored for
+     * OTA (network) targets.
+     */
+    var uploadSpeed: String? by string(EsphomeSettings.getInstance().state.defaultUploadSpeed)
+
     /** Extra arguments appended after the config file (e.g. `-s name value`). */
     var extraArgs: String? by string("")
 
@@ -64,8 +72,14 @@ enum class EsphomeCommand(val id: String, val display: String) {
     /** Commands that stream logs, where `--states`/`--no-states` applies. */
     val streamsLogs: Boolean get() = this == RUN || this == LOGS
 
+    /** Commands that flash, where `--upload_speed` (serial baud) applies. */
+    val usesUploadSpeed: Boolean get() = this == RUN || this == UPLOAD
+
     companion object {
         fun of(id: String?): EsphomeCommand = entries.firstOrNull { it.id == id } ?: COMPILE
+
+        /** Common serial flashing baud rates offered in the baud selector. */
+        val COMMON_UPLOAD_SPEEDS = listOf("", "115200", "230400", "460800", "921600")
     }
 }
 

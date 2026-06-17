@@ -33,6 +33,9 @@ class EsphomeRunConfigurationEditor : SettingsEditor<EsphomeRunConfiguration>() 
     }
     private val dockerImageField = JBTextField()
     private val deviceField = JBTextField()
+    private val uploadSpeedCombo = ComboBox(EsphomeCommand.COMMON_UPLOAD_SPEEDS.toTypedArray()).apply {
+        isEditable = true
+    }
     private val extraArgsField = JBTextField()
     private val resetBeforeLogsBox = JBCheckBox("Reset device before starting logs")
     private val emulateTerminalBox = JBCheckBox("Emulate a terminal (ANSI colour and in-place progress)")
@@ -44,6 +47,7 @@ class EsphomeRunConfigurationEditor : SettingsEditor<EsphomeRunConfiguration>() 
         statesCombo.selectedItem = s.stateReporting
         dockerImageField.text = s.dockerImage
         deviceField.text = s.device.orEmpty()
+        uploadSpeedCombo.selectedItem = s.uploadSpeed.orEmpty()
         extraArgsField.text = s.extraArgs.orEmpty()
         resetBeforeLogsBox.isSelected = s.resetBeforeLogs
         emulateTerminalBox.isSelected = s.emulateTerminal
@@ -56,6 +60,7 @@ class EsphomeRunConfigurationEditor : SettingsEditor<EsphomeRunConfiguration>() 
         s.stateReporting = statesCombo.selectedItem as StateReporting
         s.dockerImage = dockerImageField.text.trim()
         s.device = deviceField.text.trim()
+        s.uploadSpeed = (uploadSpeedCombo.selectedItem as? String)?.trim().orEmpty()
         s.extraArgs = extraArgsField.text.trim()
         s.resetBeforeLogs = resetBeforeLogsBox.isSelected
         s.emulateTerminal = emulateTerminalBox.isSelected
@@ -69,6 +74,8 @@ class EsphomeRunConfigurationEditor : SettingsEditor<EsphomeRunConfiguration>() 
             .rowComment("Used only with the Docker backend.")
         row("Device:") { cell(deviceField).align(AlignX.FILL) }
             .rowComment("OTA host/IP or serial port for run/upload/logs. Blank = let ESPHome choose.")
+        row("Baud rate:") { cell(uploadSpeedCombo) }
+            .rowComment("Serial flashing speed (--upload_speed) for run/upload. Blank = ESPHome default; ignored for OTA.")
         row("Show device states:") { cell(statesCombo) }
             .rowComment("--states / --no-states for run and logs.")
         row { cell(resetBeforeLogsBox) }

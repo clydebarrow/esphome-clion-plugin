@@ -16,11 +16,13 @@ class EsphomeCommandLinesTest {
         device: String? = null,
         stateReporting: StateReporting = StateReporting.DEFAULT,
         resetBeforeLogs: Boolean = false,
+        uploadSpeed: String? = null,
         extraArgs: String? = null,
         cacheDir: File? = null,
     ) = EsphomeCommandLines.build(
         backend, command, config, executable, EsphomeRunOptions.DEFAULT_DOCKER_IMAGE, device,
-        stateReporting = stateReporting, resetBeforeLogs = resetBeforeLogs, extraArgs = extraArgs, cacheDir = cacheDir,
+        stateReporting = stateReporting, resetBeforeLogs = resetBeforeLogs, uploadSpeed = uploadSpeed,
+        extraArgs = extraArgs, cacheDir = cacheDir,
     ).commandLineString
 
     @Test
@@ -95,6 +97,37 @@ class EsphomeCommandLinesTest {
         assertEquals(
             "/usr/bin/esphome upload /home/me/devices/living_room.yaml",
             cmd(EsphomeBackend.LOCAL, EsphomeCommand.UPLOAD, resetBeforeLogs = true),
+        )
+    }
+
+    @Test
+    fun `upload speed adds --upload_speed for run and upload`() {
+        assertEquals(
+            "/usr/bin/esphome upload /home/me/devices/living_room.yaml --device /dev/ttyUSB0 --upload_speed 921600",
+            cmd(EsphomeBackend.LOCAL, EsphomeCommand.UPLOAD, device = "/dev/ttyUSB0", uploadSpeed = "921600"),
+        )
+        assertEquals(
+            "/usr/bin/esphome run /home/me/devices/living_room.yaml --upload_speed 460800",
+            cmd(EsphomeBackend.LOCAL, EsphomeCommand.RUN, uploadSpeed = "460800"),
+        )
+    }
+
+    @Test
+    fun `upload speed is dropped for logs, blank, and OTA targets`() {
+        // logs doesn't flash
+        assertEquals(
+            "/usr/bin/esphome logs /home/me/devices/living_room.yaml",
+            cmd(EsphomeBackend.LOCAL, EsphomeCommand.LOGS, uploadSpeed = "921600"),
+        )
+        // blank speed → no flag
+        assertEquals(
+            "/usr/bin/esphome upload /home/me/devices/living_room.yaml",
+            cmd(EsphomeBackend.LOCAL, EsphomeCommand.UPLOAD, uploadSpeed = ""),
+        )
+        // OTA host → speed is meaningless, so it's omitted
+        assertEquals(
+            "/usr/bin/esphome upload /home/me/devices/living_room.yaml --device device.local",
+            cmd(EsphomeBackend.LOCAL, EsphomeCommand.UPLOAD, device = "device.local", uploadSpeed = "921600"),
         )
     }
 

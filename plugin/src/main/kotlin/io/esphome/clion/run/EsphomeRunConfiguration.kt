@@ -52,6 +52,10 @@ class EsphomeRunConfiguration(
         get() = options.resetBeforeLogs
         set(value) { options.resetBeforeLogs = value }
 
+    var uploadSpeed: String?
+        get() = options.uploadSpeed
+        set(value) { options.uploadSpeed = value }
+
     var extraArgs: String?
         get() = options.extraArgs
         set(value) { options.extraArgs = value }

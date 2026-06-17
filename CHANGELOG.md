@@ -7,6 +7,17 @@ release.
 
 ## [Unreleased]
 
+## [0.16.0]
+
+### Added
+
+- A **baud rate** selector on the run configuration sets the serial flashing
+  speed (`--upload_speed`) for `run`/`upload`; blank uses ESPHome's default and
+  it's ignored for OTA targets. New configs start from a **default baud rate** in
+  Settings | Tools | ESPHome.
+- A **default for "reset device before logs"** in Settings | Tools | ESPHome, so
+  new run/logs configurations can start with `--reset` on.
+
 ### Fixed
 
 - The carriage-return coalescer (serial progress-bar fix) could still emit a
