@@ -46,14 +46,16 @@ class CarriageReturnCoalescer {
 
     private val carried = HashMap<Any, Boolean>()
 
-    /** Returns the text to emit for [stream], stripping/holding a trailing `\r`. */
+    /** Returns the text to emit for [stream], stripping/holding any trailing `\r`. */
     @Synchronized
     fun feed(text: String, stream: Any): String {
-        var t = if (carried.remove(stream) == true) "\r$text" else text
-        if (t.endsWith('\r')) {
-            t = t.substring(0, t.length - 1)
-            carried[stream] = true
-        }
-        return t
+        val t = if (carried.remove(stream) == true) "\r$text" else text
+        // Strip *every* trailing CR, not just one: prepending the carried `\r` to a
+        // chunk that is (or ends in) `\r` yields a run of them, and leaving any
+        // behind would re-emit a chunk ending in `\r`. A run of returns-to-column-0
+        // with nothing between is equivalent to a single one, so carry just one.
+        val emit = t.trimEnd('\r')
+        if (emit.length != t.length) carried[stream] = true
+        return emit
     }
 }

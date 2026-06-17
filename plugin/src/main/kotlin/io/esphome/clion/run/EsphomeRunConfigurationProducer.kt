@@ -35,6 +35,8 @@ class EsphomeRunConfigurationProducer : LazyRunConfigurationProducer<EsphomeRunC
         val settings = EsphomeSettings.getInstance()
         configuration.backend = EsphomeBackend.of(settings.state.defaultBackend)
         configuration.dockerImage = settings.state.dockerImage ?: EsphomeRunOptions.DEFAULT_DOCKER_IMAGE
+        configuration.uploadSpeed = settings.state.defaultUploadSpeed.orEmpty()
+        configuration.resetBeforeLogs = settings.state.defaultResetBeforeLogs
         configuration.name = "esphome ${configuration.command.id} ${virtualFile.name}"
         return true
     }

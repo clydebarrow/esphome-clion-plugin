@@ -43,6 +43,8 @@ object EsphomeRunLauncher {
             val state = EsphomeSettings.getInstance().state
             config.backend = EsphomeBackend.of(state.defaultBackend)
             config.dockerImage = state.dockerImage ?: EsphomeRunOptions.DEFAULT_DOCKER_IMAGE
+            config.uploadSpeed = state.defaultUploadSpeed.orEmpty()
+            config.resetBeforeLogs = state.defaultResetBeforeLogs
             RunManager.getInstance(project).setTemporaryConfiguration(settings)
         }
 }

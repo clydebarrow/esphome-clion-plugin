@@ -52,6 +52,7 @@ class EsphomeCommandLineState(
         device = configuration.device,
         stateReporting = configuration.stateReporting,
         resetBeforeLogs = configuration.resetBeforeLogs,
+        uploadSpeed = configuration.uploadSpeed,
         extraArgs = configuration.extraArgs,
         // Optional shared cache for Docker (off by default — needs the dir shared
         // with Docker Desktop; ESPHome otherwise caches into /config/.esphome).
@@ -73,6 +74,7 @@ object EsphomeCommandLines {
         dockerExecutable: String = "docker",
         stateReporting: StateReporting = StateReporting.DEFAULT,
         resetBeforeLogs: Boolean = false,
+        uploadSpeed: String? = null,
         extraArgs: String? = null,
         cacheDir: File? = null,
     ): GeneralCommandLine {
@@ -84,6 +86,11 @@ object EsphomeCommandLines {
                 stateReporting.flag?.let(::add)
                 if (resetBeforeLogs) add("--reset")
             }
+            // Serial flashing baud rate. Skipped for OTA (network) targets, where
+            // upload speed is meaningless.
+            uploadSpeed?.trim()
+                ?.takeIf { it.isNotEmpty() && command.usesUploadSpeed && !isNetworkDevice(device) }
+                ?.let { addAll(listOf("--upload_speed", it)) }
             addAll(ParametersListUtil.parse(extraArgs.orEmpty()))
         }
 

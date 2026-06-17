@@ -48,6 +48,24 @@ class CarriageReturnCoalescerTest {
     }
 
     @Test
+    fun `a carried CR followed by a CR-only chunk never emits a chunk ending in CR`() {
+        assertEquals("a", coalescer.feed("a\r", stdout)) // stdout holds a CR
+        // carried "\r" + "\r" -> "\r\r" must collapse to "" (not "\r"), still carrying.
+        val emitted = coalescer.feed("\r", stdout)
+        assertEquals("", emitted)
+        assertFalse("a run of trailing CRs must not survive", emitted.endsWith('\r'))
+        assertEquals("\rb", coalescer.feed("b", stdout)) // the held CR re-emerges
+    }
+
+    @Test
+    fun `a carried CR followed by a chunk ending in CRs strips them all`() {
+        assertEquals("x", coalescer.feed("x\r", stdout))
+        val emitted = coalescer.feed("y\r\r", stdout) // -> "\ry\r\r"
+        assertEquals("\ry", emitted)
+        assertFalse(emitted.endsWith('\r'))
+    }
+
+    @Test
     fun `stdout and stderr carries are independent`() {
         assertEquals("a", coalescer.feed("a\r", stdout)) // stdout holds a CR
         assertEquals("b", coalescer.feed("b", stderr))   // stderr unaffected
