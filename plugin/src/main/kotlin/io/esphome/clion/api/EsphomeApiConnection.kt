@@ -47,6 +47,8 @@ class EsphomeApiConnection(
     @Volatile private var watchdog: ScheduledFuture<*>? = null
     /** Set when the watchdog closes a dead link, so the read failure isn't reported as an error. */
     @Volatile private var closedAsDead = false
+    /** Guards [Listener.onClosed] to exactly once, whichever path closes the link first. */
+    private val closedNotified = AtomicBoolean(false)
 
     fun start() {
         if (!running.compareAndSet(false, true)) return
@@ -126,8 +128,13 @@ class EsphomeApiConnection(
             watchdog = null
             frameHelper = null
             runCatching { socket?.close() }
-            listener.onClosed()
+            notifyClosed()
         }
+    }
+
+    /** Notify the listener the link is gone, at most once across all close paths. */
+    private fun notifyClosed() {
+        if (closedNotified.compareAndSet(false, true)) listener.onClosed()
     }
 
     /**
@@ -151,7 +158,15 @@ class EsphomeApiConnection(
             thisLogger().info("ESPHome device $host:$port silent for ${idleMs}ms; closing to reconnect")
             closedAsDead = true
             listener.onStatus("Device not responding — reconnecting…")
-            runCatching { socket?.close() }
+            // Force a full teardown, don't just close the socket. If the reader
+            // thread is wedged — e.g. a ping write blocked on the dead socket is
+            // holding the write lock the reader needs, and close() doesn't unblock
+            // a blocked write on this platform — then run()'s finally never fires
+            // and the panel never reconnects, leaving us stuck on this message.
+            // stop() cancels this watchdog (so it stops re-asserting) and closes
+            // the socket; notifyClosed() drives the reconnect regardless.
+            stop()
+            notifyClosed()
         } else {
             // Elicit a PingResponse; a live device answers in milliseconds, a dead
             // one stays silent and trips the timeout above on a later tick.
