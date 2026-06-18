@@ -7,6 +7,17 @@ release.
 
 ## [Unreleased]
 
+## [0.16.1]
+
+### Fixed
+
+- The **ESPHome Device** window no longer gets stuck on "Device not responding —
+  reconnecting…" after the device drops and returns (e.g. a re-flash). The
+  liveness watchdog now forces a full teardown and drives the reconnect itself
+  instead of only closing the socket and waiting for the reader thread to unwind
+  — which could wedge (a blocked ping write holding the write lock), leaving the
+  watchdog re-asserting the message forever and never reconnecting.
+
 ## [0.16.0]
 
 ### Added
