@@ -7,6 +7,8 @@ release.
 
 ## [Unreleased]
 
+## [0.16.1]
+
 ### Fixed
 
 - The **ESPHome Device** window no longer gets stuck on "Device not responding —
