@@ -141,6 +141,13 @@ class EsphomeValidationAnnotator : ExternalAnnotator<EsphomeValidationAnnotator.
      * Runs from the background [doAnnotate] phase (no read lock held), so it can
      * legally hop to the EDT to save — unlike [collectInformation], which executes
      * inside a read action where `invokeAndWait` would deadlock.
+     *
+     * Uses `saveDocumentAsIs`, not `saveDocument`: the latter runs the IDE's
+     * on-save processors (strip trailing spaces, remove trailing blank lines,
+     * ensure a final newline), which would silently reformat the user's file as a
+     * side effect of validating it — e.g. deleting a blank line just typed at the
+     * end of the file and yanking the caret back. Validation should persist the
+     * content verbatim and leave formatting to the user's own saves.
      */
     private fun flushUnsavedChanges(file: VirtualFile) {
         val application = ApplicationManager.getApplication()
@@ -153,7 +160,7 @@ class EsphomeValidationAnnotator : ExternalAnnotator<EsphomeValidationAnnotator.
         application.invokeAndWait {
             fileDocumentManager.getDocument(file)
                 ?.takeIf(fileDocumentManager::isDocumentUnsaved)
-                ?.let(fileDocumentManager::saveDocument)
+                ?.let(fileDocumentManager::saveDocumentAsIs)
         }
     }
 
