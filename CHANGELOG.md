@@ -7,6 +7,17 @@ release.
 
 ## [Unreleased]
 
+## [0.16.2]
+
+### Fixed
+
+- Background config validation no longer reformats the file it validates. It
+  flushed unsaved edits with `saveDocument`, which runs the IDE's on-save
+  processors (strip trailing spaces, remove trailing blank lines) — so typing
+  could silently trim your file mid-edit, e.g. deleting a blank line just added
+  at the end and snapping the caret back (notably with the Vim emulator). It now
+  saves the content as-is and leaves formatting to your own saves.
+
 ## [0.16.1]
 
 ### Fixed
