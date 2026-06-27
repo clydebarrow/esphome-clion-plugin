@@ -71,7 +71,11 @@ intellijPlatform {
             // needs JBR 21, i.e. IDEs from 2024.2 (build 242) onward; the APIs
             // used are stable across that range.
             sinceBuild = "242"
-            untilBuild = "261.*"
+            // No upper bound, so the plugin stays available on future IDEs (262+)
+            // without a republish each release cycle. It uses only stable platform
+            // and bundled-YAML APIs; verifyPlugin (recommended()) still catches any
+            // binary break on every released build it can test against.
+            untilBuild = provider { null }
         }
     }
 
