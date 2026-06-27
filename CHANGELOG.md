@@ -7,6 +7,15 @@ release.
 
 ## [Unreleased]
 
+## [0.16.3]
+
+### Changed
+
+- Removed the plugin's `until-build` upper bound so it stays available on future
+  IDE releases (2026.2 / build 262 and later) without a republish each cycle. The
+  plugin uses only stable platform and bundled-YAML APIs, and every release is
+  still run through `verifyPlugin` for binary compatibility.
+
 ## [0.16.2]
 
 ### Fixed
