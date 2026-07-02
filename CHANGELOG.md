@@ -7,6 +7,30 @@ release.
 
 ## [Unreleased]
 
+## [0.17.0]
+
+### Added
+
+- The **ESPHome Device** window can now control **cover**, **valve**, **lock**,
+  **select**, **number**, and **text** entities, alongside the existing switch /
+  light / fan toggles and button press:
+  - **cover** / **valve** — an Open / Stop / Close drop-down, with the live
+    position always shown as a percentage (e.g. `50% open`, `100% (open)`,
+    `opening 30%`).
+  - **lock** — a Lock / Unlock toggle; the state shows locked / unlocked /
+    jammed / locking / unlocking.
+  - **select** — a drop-down of the entity's options that tracks external
+    changes.
+  - **number** — a spinner bounded by the entity's min / max / step, with its
+    unit shown as a suffix.
+  - **text** — an editable field committed on Enter or when it loses focus.
+
+### Fixed
+
+- A "Platform not found: '<platform>'" error now highlights the offending
+  `- platform:` line in the component block, instead of the first textual
+  occurrence of the name (e.g. an entry in `external_components`).
+
 ## [0.16.3]
 
 ### Changed

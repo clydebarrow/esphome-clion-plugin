@@ -84,7 +84,88 @@ class ApiProtoTest {
 
     @Test
     fun `unknown state response is not decoded`() {
-        assertEquals(null, ApiMessages.decodeState(22 /* cover */, fixed32(1, 1)))
+        assertEquals(null, ApiMessages.decodeState(47 /* climate — not rendered */, fixed32(1, 1)))
+    }
+
+    @Test
+    fun `cover state reflects position and operation`() {
+        // CoverStateResponse (22): key=1, position=3 (float), current_operation=5.
+        // Position percentage is always shown, tagged at the endpoints.
+        assertEquals("100% (open)", ApiMessages.decodeState(22, fixed32(1, 1) + floatf(3, 1.0f))!!.display)
+        assertEquals("0% (closed)", ApiMessages.decodeState(22, fixed32(1, 1) + floatf(3, 0.0f))!!.display)
+        assertEquals("50% open", ApiMessages.decodeState(22, fixed32(1, 1) + floatf(3, 0.5f))!!.display)
+        // current_operation overrides the resting position: 1=opening, 2=closing.
+        assertEquals("opening 40%", ApiMessages.decodeState(22, fixed32(1, 1) + floatf(3, 0.4f) + varintf(5, 1))!!.display)
+        assertEquals("closing 40%", ApiMessages.decodeState(22, fixed32(1, 1) + floatf(3, 0.4f) + varintf(5, 2))!!.display)
+    }
+
+    @Test
+    fun `valve state reflects position and operation`() {
+        // ValveStateResponse (110): key=1, position=2 (float), current_operation=3.
+        assertEquals("100% (open)", ApiMessages.decodeState(110, fixed32(1, 1) + floatf(2, 1.0f))!!.display)
+        assertEquals("0% (closed)", ApiMessages.decodeState(110, fixed32(1, 1) + floatf(2, 0.0f))!!.display)
+        assertEquals("30% open", ApiMessages.decodeState(110, fixed32(1, 1) + floatf(2, 0.3f))!!.display)
+        assertEquals("opening 30%", ApiMessages.decodeState(110, fixed32(1, 1) + floatf(2, 0.3f) + varintf(3, 1))!!.display)
+        assertEquals("closing 30%", ApiMessages.decodeState(110, fixed32(1, 1) + floatf(2, 0.3f) + varintf(3, 2))!!.display)
+    }
+
+    @Test
+    fun `lock state maps the enum and carries locked as the active flag`() {
+        // LockStateResponse (59): key=1, state=2 (LockState enum).
+        assertEquals("locked", ApiMessages.decodeState(59, fixed32(1, 1) + varintf(2, 1))!!.display)
+        assertEquals("unlocked", ApiMessages.decodeState(59, fixed32(1, 1) + varintf(2, 2))!!.display)
+        assertEquals("jammed", ApiMessages.decodeState(59, fixed32(1, 1) + varintf(2, 3))!!.display)
+        assertEquals(true, ApiMessages.decodeState(59, fixed32(1, 1) + varintf(2, 1))!!.active)
+        assertEquals(false, ApiMessages.decodeState(59, fixed32(1, 1) + varintf(2, 2))!!.active)
+        assertEquals(null, ApiMessages.decodeState(59, fixed32(1, 1) + varintf(2, 3))!!.active) // jammed
+    }
+
+    @Test
+    fun `number entity decodes its range, step and unit`() {
+        // ListEntitiesNumberResponse (49): key=2, name=3, min=6, max=7, step=8, unit=11.
+        val e = ApiMessages.decodeEntity(
+            49,
+            str(1, "brightness") + fixed32(2, 3) + str(3, "Brightness") +
+                floatf(6, 0f) + floatf(7, 255f) + floatf(8, 5f) + str(11, "lx"),
+        )
+        assertEquals("number", e.type)
+        assertEquals(0f, e.numberMin, 0f)
+        assertEquals(255f, e.numberMax, 0f)
+        assertEquals(5f, e.numberStep, 0f)
+        assertEquals("lx", e.unit)
+    }
+
+    @Test
+    fun `lock command locks with command=1 and unlocks by omitting it`() {
+        val lock = ApiMessages.toggleCommand("lock", 6L, true)!!
+        assertEquals(ApiMessages.LOCK_COMMAND, lock.first)
+        assertArrayEquals(fixed32(1, 6) + varintf(2, 1), lock.second)
+        // UNLOCK is the proto3 default (0) — omitted, key only.
+        assertArrayEquals(fixed32(1, 6), ApiMessages.toggleCommand("lock", 6L, false)!!.second)
+    }
+
+    @Test
+    fun `valve command encodes open, close, and stop`() {
+        // has_position(2)=true + position(3)=1.0/0.0; stop(4)=true.
+        val open = ApiMessages.valveCommand(7L, ApiMessages.CoverAction.OPEN)
+        assertEquals(ApiMessages.VALVE_COMMAND, open.first)
+        assertArrayEquals(fixed32(1, 7) + boolf(2, true) + floatf(3, 1.0f), open.second)
+        assertArrayEquals(fixed32(1, 7) + boolf(2, true) + floatf(3, 0.0f), ApiMessages.valveCommand(7L, ApiMessages.CoverAction.CLOSE).second)
+        assertArrayEquals(fixed32(1, 7) + boolf(4, true), ApiMessages.valveCommand(7L, ApiMessages.CoverAction.STOP).second)
+    }
+
+    @Test
+    fun `number command encodes key and value`() {
+        val (type, payload) = ApiMessages.numberCommand(3L, 42.5f)
+        assertEquals(ApiMessages.NUMBER_COMMAND, type)
+        assertArrayEquals(fixed32(1, 3) + floatf(2, 42.5f), payload)
+    }
+
+    @Test
+    fun `text command encodes key and value`() {
+        val (type, payload) = ApiMessages.textCommand(3L, "hello")
+        assertEquals(ApiMessages.TEXT_COMMAND, type)
+        assertArrayEquals(fixed32(1, 3) + str(2, "hello"), payload)
     }
 
     @Test
@@ -129,6 +210,19 @@ class ApiProtoTest {
         assertEquals(null, ApiMessages.toggleCommand("sensor", 1L, true))
     }
 
+    @Test
+    fun `cover command encodes open, close, and stop`() {
+        // Open/Close: has_position(4)=true + position(5)=1.0/0.0.
+        val open = ApiMessages.coverCommand(4L, ApiMessages.CoverAction.OPEN)
+        assertEquals(ApiMessages.COVER_COMMAND, open.first)
+        assertArrayEquals(fixed32(1, 4) + boolf(4, true) + floatf(5, 1.0f), open.second)
+        val close = ApiMessages.coverCommand(4L, ApiMessages.CoverAction.CLOSE)
+        assertArrayEquals(fixed32(1, 4) + boolf(4, true) + floatf(5, 0.0f), close.second)
+        // Stop: stop(8)=true only.
+        val stop = ApiMessages.coverCommand(4L, ApiMessages.CoverAction.STOP)
+        assertArrayEquals(fixed32(1, 4) + boolf(8, true), stop.second)
+    }
+
     // --- state active flag + device class ---
 
     @Test
@@ -161,6 +255,24 @@ class ApiProtoTest {
         assertEquals("temperature", sensor.deviceClass)
         val binary = ApiMessages.decodeEntity(12, str(1, "m") + fixed32(2, 2) + str(3, "Motion") + str(5, "motion"))
         assertEquals("motion", binary.deviceClass)
+    }
+
+    @Test
+    fun `select entity decodes its options`() {
+        // ListEntitiesSelectResponse (52): object_id=1, key=2, name=3, repeated options=6.
+        val e = ApiMessages.decodeEntity(
+            52,
+            str(1, "mode") + fixed32(2, 5) + str(3, "Mode") + str(6, "Off") + str(6, "Low") + str(6, "High"),
+        )
+        assertEquals("select", e.type)
+        assertEquals(listOf("Off", "Low", "High"), e.options)
+    }
+
+    @Test
+    fun `select command encodes key and chosen option`() {
+        val (type, payload) = ApiMessages.selectCommand(5L, "Low")
+        assertEquals(ApiMessages.SELECT_COMMAND, type)
+        assertArrayEquals(fixed32(1, 5) + str(2, "Low"), payload)
     }
 
     @Test

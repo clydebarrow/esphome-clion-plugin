@@ -219,6 +219,9 @@ class EsphomeValidationAnnotator : ExternalAnnotator<EsphomeValidationAnnotator.
      */
     private fun rangeFor(document: Document, diagnostic: EsphomeDiagnostic): TextRange? {
         if (diagnostic.anchorLine <= 0) {
+            // A "Platform not found" error: anchor on the `- platform: <value>`
+            // declaration, not the first stray occurrence of the token.
+            diagnostic.platformValue?.let { findPlatformLine(document, it) }?.let { return it }
             diagnostic.searchToken?.let { findToken(document, it) }?.let { return it }
             return if (diagnostic.severity == EsphomeSeverity.WARNING) null else trimmedLineRange(document, 0)
         }
@@ -235,6 +238,14 @@ class EsphomeValidationAnnotator : ExternalAnnotator<EsphomeValidationAnnotator.
         val index = wholeWordIndex(document.charsSequence, token)
         return if (index < 0) null else TextRange(index, index + token.length)
     }
+
+    /**
+     * Range of the `<value>` token on a `platform: <value>` line, anchoring a
+     * "Platform not found" error on the actual platform declaration instead of an
+     * earlier stray occurrence of the token (e.g. in `external_components:`).
+     */
+    private fun findPlatformLine(document: Document, value: String): TextRange? =
+        platformValueRange(document.charsSequence, value)?.let { TextRange(it.first, it.last + 1) }
 
     /**
      * Locate the offending source line at or after [fromLine]. Prefer the exact
@@ -306,5 +317,15 @@ class EsphomeValidationAnnotator : ExternalAnnotator<EsphomeValidationAnnotator.
         }
 
         private fun isWordChar(c: Char): Boolean = c.isLetterOrDigit() || c == '_'
+
+        /**
+         * Range of the `<value>` token on a `platform: <value>` line in [text],
+         * tolerating the `- ` list-item prefix, quotes, and a trailing comment; or
+         * null if no such line exists.
+         */
+        fun platformValueRange(text: CharSequence, value: String): IntRange? {
+            val regex = Regex("""(?m)^\s*(?:-\s+)?platform:\s*["']?(${Regex.escape(value)})["']?\s*(?:#.*)?$""")
+            return regex.find(text)?.groups?.get(1)?.range
+        }
     }
 }
