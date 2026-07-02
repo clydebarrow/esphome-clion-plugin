@@ -148,6 +148,8 @@ class EsphomeConfigOutputParserTest {
         assertEquals(1, diagnostics.size)
         assertEquals(0, diagnostics[0].anchorLine) // file-level
         assertEquals("gpxo", diagnostics[0].searchToken)
+        // Also carried as a platform value, to anchor on the `- platform: gpxo` line.
+        assertEquals("gpxo", diagnostics[0].platformValue)
         assertTrue(diagnostics[0].message.startsWith("Platform not found"))
         // The INFO line above must NOT be treated as an error.
         assertTrue(diagnostics.none { it.message.startsWith("Unable to import") })

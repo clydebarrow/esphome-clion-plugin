@@ -36,6 +36,10 @@ class ProtoWriter {
         return this
     }
 
+    /** A float field (wire type 5), IEEE-754 little-endian — always written. */
+    fun float(field: Int, value: Float): ProtoWriter =
+        fixed32(field, value.toRawBits().toLong() and 0xFFFF_FFFFL)
+
     /** A bool field; only emitted when true (proto3 default-omit). */
     fun bool(field: Int, value: Boolean): ProtoWriter {
         if (!value) return this

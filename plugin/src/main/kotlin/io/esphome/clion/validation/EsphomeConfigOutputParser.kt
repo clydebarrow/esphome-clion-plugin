@@ -21,6 +21,13 @@ data class EsphomeDiagnostic(
     val offendingValue: String? = null,
     /** A literal token to locate in the file when there is no key/line (e.g. a bad platform value). */
     val searchToken: String? = null,
+    /**
+     * For a "Platform not found: '<domain>.<platform>'" error, the `<platform>`
+     * name to locate specifically as a `platform:` value (`- platform: x`) — not
+     * just the first occurrence of the bare token, which may appear earlier (e.g.
+     * in an `external_components:` list).
+     */
+    val platformValue: String? = null,
     /** Highlight severity: errors fail the build; warnings are advisory. */
     val severity: EsphomeSeverity = EsphomeSeverity.ERROR,
 )
@@ -55,6 +62,7 @@ object EsphomeConfigOutputParser {
     private val QUOTED = Regex("""'([^']+)'""")
     private val WARNING_LINE = Regex("""^WARNING\s+(.+)$""")
     private val GPIO = Regex("""\bGPIO\d+\b""")
+    private val PLATFORM_NOT_FOUND = Regex("""^Platform not found\b""")
 
     /**
      * `WARNING …` lines from `esphome config` (e.g. a strapping-pin advisory).
@@ -122,6 +130,7 @@ object EsphomeConfigOutputParser {
             } else if (includeTopLevelErrors && failedSeen && isTopLevelError(lines[i])) {
                 diagnostics += EsphomeDiagnostic(
                     targetFile, 0, trimmed, offendingKey = null, searchToken = searchToken(trimmed),
+                    platformValue = platformValue(trimmed),
                 )
             }
             i++
@@ -175,6 +184,14 @@ object EsphomeConfigOutputParser {
     /** A quoted token to locate in the file, e.g. `'binary_sensor.gpxo'` -> `gpxo`. */
     private fun searchToken(message: String): String? =
         QUOTED.find(message)?.groupValues?.get(1)?.substringAfterLast('.')?.takeIf { it.isNotBlank() }
+
+    /**
+     * The platform name from a "Platform not found: '<domain>.<platform>'" error,
+     * to anchor on the `- platform: <platform>` line rather than the first bare
+     * occurrence of the token.
+     */
+    private fun platformValue(message: String): String? =
+        if (PLATFORM_NOT_FOUND.containsMatchIn(message)) searchToken(message) else null
 
     /** ESPHome may print an absolute or relative path; match on the file name. */
     private fun sameFile(reported: String, target: String): Boolean {
