@@ -88,13 +88,24 @@ jobs:
           echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
 
       # The release body: this version's CHANGELOG.md section, falling back to
-      # the [Unreleased] section (and to auto-generated notes if neither exists).
+      # the [Unreleased] section (and to auto-generated notes if neither
+      # exists). [Unreleased] always sits above every version heading (Keep a
+      # Changelog convention keeps it at the top, empty, between releases) —
+      # so the version target must be picked *before* the awk scan, not by a
+      # first-match-wins fallback inside it, or the always-first [Unreleased]
+      # heading wins every time and the real section is never reached.
       - name: Extract release notes
         run: |
-          awk -v ver="${{ steps.version.outputs.version }}" '
+          VERSION="${{ steps.version.outputs.version }}"
+          if grep -q "^## \[${VERSION}\]" CHANGELOG.md; then
+            TARGET="[${VERSION}]"
+          else
+            TARGET="[Unreleased]"
+          fi
+          awk -v target="$TARGET" '
             /^## \[/ {
               if (printing) exit
-              if (index($0, "[" ver "]") || (!found && index($0, "[Unreleased]"))) { printing=1; found=1; next }
+              if (index($0, target)) { printing=1; next }
             }
             printing { print }
           ' CHANGELOG.md > release-notes.md
