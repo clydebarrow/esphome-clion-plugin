@@ -7,6 +7,8 @@ release.
 
 ## [Unreleased]
 
+## [0.17.1]
+
 ### Changed
 
 - Refreshed the vendored ESPHome component catalog (previously pinned to
