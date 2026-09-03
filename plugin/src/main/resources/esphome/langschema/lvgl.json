@@ -1,6 +1,56 @@
 {
   "lvgl": {
     "action": {
+      "animation.start": {
+        "maybe": "id",
+        "schema": {
+          "config_vars": {
+            "duration": {
+              "key": "Optional"
+            },
+            "id": {
+              "is_list": true,
+              "key": "Required",
+              "type": "use_id",
+              "use_id_type": "lvgl::LvAnimation"
+            },
+            "loop": {
+              "key": "Optional",
+              "type": "boolean"
+            },
+            "lvgl_id": {
+              "key": "GeneratedID",
+              "type": "use_id",
+              "use_id_type": "lvgl::LvglComponent"
+            },
+            "start_delay": {
+              "key": "Optional"
+            }
+          }
+        },
+        "type": "schema",
+        "docs": "Starts one or more animations. If an animation is already running it is restarted from the beginning. The `duration`, `start_delay` and `loop` options, if given, override the values configured on the animation for this and subsequent runs."
+      },
+      "animation.stop": {
+        "maybe": "id",
+        "schema": {
+          "config_vars": {
+            "id": {
+              "is_list": true,
+              "key": "Required",
+              "type": "use_id",
+              "use_id_type": "lvgl::LvAnimation"
+            },
+            "lvgl_id": {
+              "key": "GeneratedID",
+              "type": "use_id",
+              "use_id_type": "lvgl::LvglComponent"
+            }
+          }
+        },
+        "type": "schema",
+        "docs": "Stops one or more running animations, leaving the animated properties at their current values. The `on_stop` automation runs for each animation that was running. Stopping an animation that is not running has no effect."
+      },
       "animimg.start": {
         "maybe": "id",
         "schema": {
@@ -267,6 +317,9 @@
               "key": "Optional"
             },
             "image_recolor_opa": {
+              "key": "Optional"
+            },
+            "layout": {
               "key": "Optional"
             },
             "layout_1": {
@@ -862,6 +915,9 @@
               },
               "type": "schema"
             },
+            "layout": {
+              "key": "Optional"
+            },
             "layout_1": {
               "key": "Optional"
             },
@@ -1455,6 +1511,9 @@
               },
               "type": "schema"
             },
+            "layout": {
+              "key": "Optional"
+            },
             "layout_1": {
               "key": "Optional"
             },
@@ -2032,6 +2091,9 @@
             "image_recolor_opa": {
               "key": "Optional"
             },
+            "layout": {
+              "key": "Optional"
+            },
             "layout_1": {
               "key": "Optional"
             },
@@ -2583,6 +2645,9 @@
               "key": "Optional"
             },
             "image_recolor_opa": {
+              "key": "Optional"
+            },
+            "layout": {
               "key": "Optional"
             },
             "layout_1": {
@@ -3617,6 +3682,9 @@
             "image_recolor_opa": {
               "key": "Optional"
             },
+            "layout": {
+              "key": "Optional"
+            },
             "layout_1": {
               "key": "Optional"
             },
@@ -4188,6 +4256,9 @@
               },
               "type": "schema"
             },
+            "layout": {
+              "key": "Optional"
+            },
             "layout_1": {
               "key": "Optional"
             },
@@ -4756,6 +4827,9 @@
             "image_recolor_opa": {
               "key": "Optional"
             },
+            "layout": {
+              "key": "Optional"
+            },
             "layout_1": {
               "key": "Optional"
             },
@@ -5107,7 +5181,8 @@
             }
           }
         },
-        "type": "schema"
+        "type": "schema",
+        "docs": "This [action](https://esphome.io/automations/actions#actions-action) rotates the LVGL display."
       },
       "dropdown.update": {
         "schema": {
@@ -5912,6 +5987,9 @@
               },
               "type": "schema"
             },
+            "layout": {
+              "key": "Optional"
+            },
             "layout_1": {
               "key": "Optional"
             },
@@ -6485,6 +6563,9 @@
               "key": "Optional"
             },
             "image_recolor_opa": {
+              "key": "Optional"
+            },
+            "layout": {
               "key": "Optional"
             },
             "layout_1": {
@@ -7071,6 +7152,9 @@
               "key": "Optional"
             },
             "image_recolor_opa": {
+              "key": "Optional"
+            },
+            "layout": {
               "key": "Optional"
             },
             "layout_1": {
@@ -7692,6 +7776,9 @@
               },
               "type": "schema"
             },
+            "layout": {
+              "key": "Optional"
+            },
             "layout_1": {
               "key": "Optional"
             },
@@ -8260,6 +8347,9 @@
               "key": "Optional"
             },
             "image_recolor_opa": {
+              "key": "Optional"
+            },
+            "layout": {
               "key": "Optional"
             },
             "layout_1": {
@@ -8854,6 +8944,9 @@
             "image_recolor_opa": {
               "key": "Optional"
             },
+            "layout": {
+              "key": "Optional"
+            },
             "layout_1": {
               "key": "Optional"
             },
@@ -9414,6 +9507,9 @@
               "key": "Optional"
             },
             "image_recolor_opa": {
+              "key": "Optional"
+            },
+            "layout": {
               "key": "Optional"
             },
             "layout_1": {
@@ -9980,6 +10076,9 @@
               "key": "Optional"
             },
             "image_recolor_opa": {
+              "key": "Optional"
+            },
+            "layout": {
               "key": "Optional"
             },
             "layout_1": {
@@ -10561,6 +10660,9 @@
                 ]
               },
               "type": "schema"
+            },
+            "layout": {
+              "key": "Optional"
             },
             "layout_1": {
               "key": "Optional"
@@ -11464,6 +11566,9 @@
             "image_recolor_opa": {
               "key": "Optional"
             },
+            "layout": {
+              "key": "Optional"
+            },
             "layout_1": {
               "key": "Optional"
             },
@@ -11819,7 +11924,8 @@
             }
           }
         },
-        "type": "schema"
+        "type": "schema",
+        "docs": "This [action](https://esphome.io/automations/actions#actions-action) changes the page to the next/previous based on the configuration (pages with their `skip` option enabled are...skipped). Page changes will wrap around at the end."
       },
       "page.previous": {
         "schema": {
@@ -11865,7 +11971,8 @@
             }
           }
         },
-        "type": "schema"
+        "type": "schema",
+        "docs": "This [action](https://esphome.io/automations/actions#actions-action) shows a specific page (including pages with their `skip` option enabled)."
       },
       "page.update": {
         "schema": {
@@ -12099,6 +12206,9 @@
               "key": "Optional"
             },
             "image_recolor_opa": {
+              "key": "Optional"
+            },
+            "layout": {
               "key": "Optional"
             },
             "layout_1": {
@@ -12434,7 +12544,8 @@
             }
           }
         },
-        "type": "schema"
+        "type": "schema",
+        "docs": "This [action](https://esphome.io/automations/actions#actions-action) pauses the activity of LVGL, including rendering."
       },
       "qrcode.update": {
         "schema": {
@@ -12671,6 +12782,9 @@
               "key": "Optional"
             },
             "image_recolor_opa": {
+              "key": "Optional"
+            },
+            "layout": {
               "key": "Optional"
             },
             "layout_1": {
@@ -13020,7 +13134,8 @@
             }
           }
         },
-        "type": "schema"
+        "type": "schema",
+        "docs": "This [action](https://esphome.io/automations/actions#actions-action) resumes the activity of LVGL, including rendering."
       },
       "roller.update": {
         "schema": {
@@ -13258,6 +13373,9 @@
               "key": "Optional"
             },
             "image_recolor_opa": {
+              "key": "Optional"
+            },
+            "layout": {
               "key": "Optional"
             },
             "layout_1": {
@@ -13869,6 +13987,9 @@
               },
               "type": "schema"
             },
+            "layout": {
+              "key": "Optional"
+            },
             "layout_1": {
               "key": "Optional"
             },
@@ -14467,6 +14588,9 @@
               "key": "Optional"
             },
             "image_recolor_opa": {
+              "key": "Optional"
+            },
+            "layout": {
               "key": "Optional"
             },
             "layout_1": {
@@ -15075,6 +15199,9 @@
               },
               "type": "schema"
             },
+            "layout": {
+              "key": "Optional"
+            },
             "layout_1": {
               "key": "Optional"
             },
@@ -15420,7 +15547,8 @@
             "lvgl.FULL_STYLE_SCHEMA"
           ]
         },
-        "type": "schema"
+        "type": "schema",
+        "docs": "This [action](https://esphome.io/automations/actions#actions-action) allows changing/updating the properties of a style at run time. This can be used to implement dynamic themes, e.g. light/dark mode, or to change the appearance of widgets based on user interaction."
       },
       "switch.update": {
         "schema": {
@@ -15673,6 +15801,9 @@
                 ]
               },
               "type": "schema"
+            },
+            "layout": {
+              "key": "Optional"
             },
             "layout_1": {
               "key": "Optional"
@@ -16255,6 +16386,9 @@
             "image_recolor_opa": {
               "key": "Optional"
             },
+            "layout": {
+              "key": "Optional"
+            },
             "layout_1": {
               "key": "Optional"
             },
@@ -16829,6 +16963,9 @@
             "image_recolor_opa": {
               "key": "Optional"
             },
+            "layout": {
+              "key": "Optional"
+            },
             "layout_1": {
               "key": "Optional"
             },
@@ -17199,6 +17336,9 @@
         },
         "type": "schema"
       },
+      "theme.update": {
+        "docs": "This [action](https://esphome.io/automations/actions#actions-action) allows changing/updating, at run time, the styles applied to all widgets of a given type by the [`theme:`](https://esphome.io/components/lvgl#lvgl-theme) configuration. This can be used, for example, to switch the accent color used by every `button` widget in response to a user action, without having to update each widget individually."
+      },
       "tileview.select": {
         "schema": {
           "config_vars": {
@@ -17458,6 +17598,9 @@
               "key": "Optional"
             },
             "image_recolor_opa": {
+              "key": "Optional"
+            },
+            "layout": {
               "key": "Optional"
             },
             "layout_1": {
@@ -18119,6 +18262,9 @@
                   "image_recolor_opa": {
                     "key": "Optional"
                   },
+                  "layout": {
+                    "key": "Optional"
+                  },
                   "layout_1": {
                     "key": "Optional"
                   },
@@ -18562,6 +18708,9 @@
               "key": "Optional"
             },
             "image_recolor_opa": {
+              "key": "Optional"
+            },
+            "layout": {
               "key": "Optional"
             },
             "layout_1": {
@@ -19041,6 +19190,9 @@
                   "image_recolor_opa": {
                     "key": "Optional"
                   },
+                  "layout": {
+                    "key": "Optional"
+                  },
                   "layout_1": {
                     "key": "Optional"
                   },
@@ -19446,7 +19598,8 @@
             "lvgl.DISP_BG_SCHEMA"
           ]
         },
-        "type": "schema"
+        "type": "schema",
+        "docs": "This [action](https://esphome.io/automations/actions#actions-action) allows changing/updating the styling and layout of the active screen and the LVGL display layers at runtime. Top-level [style properties](https://esphome.io/components/lvgl#lvgl-styling) and a `layout:` apply to the currently active screen; you can also style and lay out the `top_layer` and/or `bottom_layer`."
       },
       "widget.disable": {
         "is_list": true,
@@ -19460,7 +19613,8 @@
             }
           }
         },
-        "type": "schema"
+        "type": "schema",
+        "docs": "These [actions](https://esphome.io/automations/actions#actions-action) are shorthands for toggling the `disabled` state of any widget (which controls the appearance of the corresponding *disabled* style set of the theme):"
       },
       "widget.enable": {
         "is_list": true,
@@ -19495,7 +19649,8 @@
             }
           }
         },
-        "type": "schema"
+        "type": "schema",
+        "docs": "This [action](https://esphome.io/automations/actions#actions-action) moves the input focus to the nominated widget. Used mainly with encoder inputs to select a specific widget to receive input events. It may also allow the focus to be frozen on that widget, or can be used to move the focus to the next or previous widget in the focus group."
       },
       "widget.hide": {
         "is_list": true,
@@ -19509,7 +19664,8 @@
             }
           }
         },
-        "type": "schema"
+        "type": "schema",
+        "docs": "These [actions](https://esphome.io/automations/actions#actions-action) are shorthands for toggling the `hidden` [flag](https://esphome.io/components/lvgl/widgets#lvgl-widget-flags) of any widget."
       },
       "widget.redraw": {
         "maybe": "id",
@@ -19527,7 +19683,8 @@
             }
           }
         },
-        "type": "schema"
+        "type": "schema",
+        "docs": "This [action](https://esphome.io/automations/actions#actions-action) redraws the entire screen, or optionally only selected widgets. It does not change any widget properties. It is mostly useful to redraw the screen after resuming LVGL from the paused state."
       },
       "widget.refresh": {
         "is_list": true,
@@ -19541,7 +19698,41 @@
             }
           }
         },
-        "type": "schema"
+        "type": "schema",
+        "docs": "This [action](https://esphome.io/automations/actions#actions-action) re-evaluates all properties specified with lambdas in the specified widget's configuration. This offers an alternative technique to using the `lvgl.widget.update` action, which updates specified properties."
+      },
+      "widget.set_z_index": {
+        "schema": {
+          "config_vars": {
+            "id": {
+              "is_list": true,
+              "key": "Required",
+              "maybe": "id",
+              "schema": {
+                "config_vars": {
+                  "id": {
+                    "key": "Required",
+                    "type": "use_id",
+                    "use_id_type": "lv_obj_t"
+                  }
+                }
+              },
+              "type": "schema"
+            },
+            "position": {
+              "key": "Required",
+              "type": "integer",
+              "values": {
+                "BOTTOM": null,
+                "DOWN": null,
+                "TOP": null,
+                "UP": null
+              }
+            }
+          }
+        },
+        "type": "schema",
+        "docs": "This [action](https://esphome.io/automations/actions#actions-action) changes the stacking order (z-index) of a widget among its siblings, i.e. which widgets are drawn on top of which. It does not change any other widget property."
       },
       "widget.show": {
         "is_list": true,
@@ -19826,6 +20017,9 @@
                 ]
               },
               "type": "schema"
+            },
+            "layout": {
+              "key": "Optional"
             },
             "layout_1": {
               "key": "Optional"
@@ -20180,7 +20374,8 @@
             }
           }
         },
-        "type": "schema"
+        "type": "schema",
+        "docs": "This powerful [action](https://esphome.io/automations/actions#actions-action) allows changing/updating any widget's common [style property](https://esphome.io/components/lvgl#lvgl-styling), state (templatable) or [flag](https://esphome.io/components/lvgl/widgets#lvgl-widget-flags) on the fly."
       }
     },
     "condition": {
@@ -20198,7 +20393,8 @@
             }
           }
         },
-        "type": "schema"
+        "type": "schema",
+        "docs": "This [condition](https://esphome.io/automations/actions#common-conditions) checks if the amount of time specified has passed since the last touch event."
       },
       "is_paused": {
         "schema": {
@@ -20210,7 +20406,8 @@
             }
           }
         },
-        "type": "schema"
+        "type": "schema",
+        "docs": "This [condition](https://esphome.io/automations/actions#common-conditions) checks if LVGL is in the paused state or not."
       },
       "page.is_showing": {
         "maybe": "id",
@@ -20223,10 +20420,1096 @@
             }
           }
         },
-        "type": "schema"
+        "type": "schema",
+        "docs": "This [condition](https://esphome.io/automations/actions#common-conditions) checks if the nominated page is the one currently showing."
       }
     },
     "schemas": {
+      "ANIMATION_SCHEMA": {
+        "schema": {
+          "config_vars": {
+            "auto_start": {
+              "default": "False",
+              "key": "Optional",
+              "type": "boolean"
+            },
+            "duration": {
+              "default": "5s",
+              "key": "Optional"
+            },
+            "id": {
+              "id_type": {
+                "class": "lvgl::LvAnimation",
+                "parents": [
+                  "Component"
+                ]
+              },
+              "key": "Required"
+            },
+            "loop": {
+              "default": "False",
+              "key": "Optional",
+              "type": "boolean"
+            },
+            "on_start": {
+              "key": "Optional",
+              "type": "trigger"
+            },
+            "on_stop": {
+              "key": "Optional",
+              "type": "trigger"
+            },
+            "start_delay": {
+              "default": "0s",
+              "key": "Optional"
+            },
+            "timing": {
+              "default": "[]",
+              "is_list": true,
+              "key": "Optional",
+              "maybe": "type",
+              "type": "typed",
+              "typed_key": "type",
+              "types": {
+                "ease_in_out": {
+                  "config_vars": {
+                    "id": {
+                      "id_type": {
+                        "class": "lvgl::LvAnimationTimingEaseInOut",
+                        "parents": []
+                      },
+                      "key": "GeneratedID"
+                    },
+                    "weight": {
+                      "data_type": "zero_to_one_float",
+                      "default": "1.0",
+                      "key": "Optional"
+                    }
+                  }
+                },
+                "gravity": {
+                  "config_vars": {
+                    "acceleration": {
+                      "default": "0.5",
+                      "key": "Optional"
+                    },
+                    "bounce": {
+                      "default": "0.5",
+                      "key": "Optional"
+                    },
+                    "id": {
+                      "id_type": {
+                        "class": "lvgl::LvAnimationTimingGravity",
+                        "parents": []
+                      },
+                      "key": "GeneratedID"
+                    }
+                  }
+                },
+                "round_trip": {
+                  "config_vars": {
+                    "id": {
+                      "id_type": {
+                        "class": "lvgl::LvAnimationTimingRoundTrip",
+                        "parents": []
+                      },
+                      "key": "GeneratedID"
+                    },
+                    "pause": {
+                      "default": "0.0",
+                      "key": "Optional"
+                    }
+                  }
+                }
+              }
+            },
+            "widgets": {
+              "is_list": true,
+              "key": "Required",
+              "schema": {
+                "config_vars": {
+                  "arc_color": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "arc_opa": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "bg_color": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "bg_grad_color": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "bg_grad_opa": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "bg_image_opa": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "bg_image_recolor": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "bg_image_recolor_opa": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "bg_main_opa": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "bg_opa": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "blur_radius": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "border_color": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "border_opa": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "border_width": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "color_filter_opa": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "drop_shadow_color": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "drop_shadow_offset_x": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "drop_shadow_offset_y": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "drop_shadow_opa": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "drop_shadow_radius": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "id": {
+                    "key": "Required",
+                    "type": "use_id",
+                    "use_id_type": "lv_obj_t"
+                  },
+                  "image_opa": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "image_recolor": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "image_recolor_opa": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "length": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "line_color": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "line_dash_gap": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "line_dash_width": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "line_opa": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "line_width": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "max_height": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "max_width": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "min_height": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "min_width": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "opa": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "opa_layered": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "outline_color": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "outline_opa": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "r_mod": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "recolor": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "recolor_opa": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "rotary_sensitivity": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "shadow_color": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "shadow_offset_x": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "shadow_offset_y": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "shadow_ofs_x": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "shadow_ofs_y": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "shadow_opa": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "shadow_spread": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "shadow_width": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "text_color": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "text_letter_space": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "text_line_space": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "text_opa": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "text_outline_stroke_color": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "text_outline_stroke_opa": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "text_outline_stroke_width": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "transform_angle": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "transform_height": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "transform_pivot_x": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "transform_pivot_y": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "transform_rotation": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "transform_skew_x": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "transform_skew_y": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "transform_width": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "translate_radial": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "translate_x": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "translate_y": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "x": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  },
+                  "y": {
+                    "key": "Optional",
+                    "schema": {
+                      "config_vars": {
+                        "from": {
+                          "key": "Required"
+                        },
+                        "to": {
+                          "key": "Required"
+                        }
+                      }
+                    },
+                    "type": "schema"
+                  }
+                }
+              },
+              "type": "schema"
+            }
+          },
+          "extends": [
+            "core.COMPONENT_SCHEMA"
+          ]
+        },
+        "type": "schema"
+      },
       "CONFIG_SCHEMA": {
         "schema": {
           "config_vars": {
@@ -20274,6 +21557,16 @@
             },
             "anim_time": {
               "key": "Optional"
+            },
+            "animations": {
+              "is_list": true,
+              "key": "Optional",
+              "schema": {
+                "extends": [
+                  "lvgl.ANIMATION_SCHEMA"
+                ]
+              },
+              "type": "schema"
             },
             "arc_color": {
               "key": "Optional"
@@ -20816,6 +22109,10 @@
               "key": "Optional",
               "type": "trigger"
             },
+            "on_landscape": {
+              "key": "Optional",
+              "type": "trigger"
+            },
             "on_layout_change": {
               "key": "Optional",
               "type": "trigger"
@@ -20833,6 +22130,10 @@
               "type": "trigger"
             },
             "on_pause": {
+              "key": "Optional",
+              "type": "trigger"
+            },
+            "on_portrait": {
               "key": "Optional",
               "type": "trigger"
             },
@@ -21035,6 +22336,11 @@
               "is_list": true,
               "key": "Optional"
             },
+            "paused": {
+              "default": "False",
+              "key": "Optional",
+              "type": "boolean"
+            },
             "press_lock": {
               "key": "Optional"
             },
@@ -21061,6 +22367,15 @@
             },
             "recolor_opa": {
               "key": "Optional"
+            },
+            "refresh_interval": {
+              "key": "Optional",
+              "schema": {
+                "extends": [
+                  "core.positive_time_period_milliseconds"
+                ]
+              },
+              "type": "schema"
             },
             "resume_on_input": {
               "default": "True",
@@ -21167,7 +22482,8 @@
                   "lvgl.SET_STATE_SCHEMA"
                 ]
               },
-              "type": "schema"
+              "type": "schema",
+              "docs": "**string**: Which widget state to report. One of:\n\n*See also: [LVGL Binary Sensor](https://esphome.io/components/binary_sensor/lvgl#configuration-variables)*"
             },
             "style_definitions": {
               "is_list": true,

@@ -35,17 +35,57 @@ one:**
 | Concern | Source | Mechanism |
 |---|---|---|
 | Completion / hover / docs (most components) | Device Builder's *normalized* catalog (`components.index.json` + `components/<id>.json`), vendored via the `vendorCatalog` Gradle task, pinned by `esphomeDeviceBuilderRef` in `gradle.properties` | Fully flattened/resolved JSON, refreshed per pin bump |
-| Completion for `lvgl:` specifically | A plugin-side **language-schema converter** (`catalog/.../lang/LangSchemaRepository`, `EsphomeLangSchemaService`) reading bundled `plugin/src/main/resources/esphome/langschema/{esphome,lvgl}.json`, with lazily-resolved `extends` + a cycle guard | Device Builder's flattener explodes lvgl's recursive/shared schemas to ~15MB; this hybrid path keeps it ~1.6MB and handles recursion. Everything *except* lvgl still goes through the normal catalog (it has real field docs lvgl's raw schema lacks). |
+| Completion for `lvgl:` specifically | A plugin-side **language-schema converter** (`catalog/.../lang/LangSchemaRepository`, `EsphomeLangSchemaService`) reading bundled `plugin/src/main/resources/esphome/langschema/{esphome,lvgl}.json`, with lazily-resolved `extends` + a cycle guard | Device Builder's flattener explodes lvgl's recursive/shared schemas to ~15MB (which is exactly why device-builder itself refuses to ship a flattened lvgl body — see the overlay note below); this hybrid path keeps it ~1.7MB and handles recursion. Everything *except* lvgl still goes through the normal catalog (it has real field docs lvgl's raw schema lacks). |
 | Validation / diagnostics | Shell out to the user's `esphome config` (`ExternalAnnotator`, `EsphomeConfigOutputParser`) | Ground truth — resolves `!secret`/`!include`/`!lambda`, substitutions, packages; nothing static can replace this |
 
-**Known temporary debt:** `plugin/catalog-overlay/esphome/definitions/` (an
-`overlayCatalog` Gradle task, chained after `vendorCatalog`) drops a
-locally-regenerated `lvgl.json` + a relabeled automations index over the
-vendored catalog. This exists because the upstream `esphome`/`device-builder`
-fix for lvgl's schema-dump bloat hadn't shipped in a pinned `device-builder`
-release yet. **Before touching lvgl catalog code, check whether
-`esphomeDeviceBuilderRef` has since moved past that fix** — if so, delete the
-overlay task and `plugin/catalog-overlay/` rather than maintaining it further.
+**The lvgl catalog overlay is permanent, not temporary debt (corrected
+2026-09-04):** `plugin/catalog-overlay/esphome/definitions/components/lvgl.json`
+(an `overlayCatalog` Gradle task, chained after `vendorCatalog`) overrides the
+vendored `lvgl` component body. This used to be attributed to the fix for
+lvgl's schema-dump bloat not having reached a pinned `device-builder` release
+yet — that turned out to be wrong. The fix *did* land and *is* in every
+current `device-builder` sync, but device-builder responded to the
+still-huge flattened output (lvgl's recursive widget tree has no `extends`
+mechanism in their `ConfigEntry` model, so it fully inlines to ~14 MB) by
+**deliberately shipping zero `config_entries` for `lvgl`** — see
+`_YAML_ONLY_COMPONENT_IDS` in their `script/sync_components.py`
+(esphome/device-builder#1510, merged 2026-06-16). No future ref bump will
+ever restore it; **don't delete the overlay**. What it's for and how to
+regenerate it is documented in the `overlayCatalog` task's comment in
+`plugin/build.gradle.kts` — short version: check out device-builder from just
+before #1510, run its `sync_components.py --limit-component lvgl` against the
+current schema version, drop the `widgets` entry (the recursive tree — handled
+separately by the langschema converter, and the reason for the 14 MB), and
+hand-patch the `displays` field's `references_component` and the component's
+mislabeled name/description/docs_url. The automations index needs no such
+overlay — device-builder's vendored `automations.index.json` already carries
+lvgl's triggers correctly on its own (verified 2026-09-04); don't reintroduce
+a static copy of it, it will just go stale and silently regress every other
+component's automation data.
+
+## Checking whether the catalog pin needs bumping
+
+`esphomeDeviceBuilderRef` (`gradle.properties`) is a fixed commit, not a
+moving target — it silently drifts behind every new ESPHome release until
+someone bumps it. Last refreshed 2026-09-04 to `292ed4f2` (schema 2026.8.2);
+before that it had sat at a 2026-06-07 commit for three months, three ESPHome
+minor releases stale. Check drift with:
+
+```bash
+gh api repos/esphome/device-builder/compare/<current-ref>...main \
+  --jq '{ahead_by,behind_by}'
+gh api repos/esphome/esphome/releases/latest --jq '.tag_name'
+```
+
+To bump: update the ref in both `gradle.properties` and the fallback default
+in `plugin/build.gradle.kts` (keep them in sync — the properties file is what
+actually takes effect; the Kotlin default is just what a fresh checkout with
+no override falls back to), refresh
+`plugin/src/main/resources/esphome/langschema/{esphome,lvgl}.json` from the
+matching `schema.esphome.io/<version>/schema.zip`, run
+`./gradlew vendorCatalog :catalog:test :plugin:test`, and re-check the lvgl
+overlay (previous section) if the schema version moved far enough that lvgl's
+own config options likely changed.
 
 ## Build & test
 

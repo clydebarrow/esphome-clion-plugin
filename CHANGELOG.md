@@ -7,6 +7,21 @@ release.
 
 ## [Unreleased]
 
+### Changed
+
+- Refreshed the vendored ESPHome component catalog (previously pinned to
+  schema ~2026.6.x, now 2026.8.2) — completion/hover now covers components and
+  options added across the 2026.7 and 2026.8 releases. Also refreshed the
+  bundled `lvgl` raw-language-schema and the `lvgl` catalog overlay to match.
+
+### Fixed
+
+- The `lvgl` catalog overlay no longer ships a stale, hand-copied
+  `automations.index.json` snapshot — device-builder's own vendored index has
+  carried lvgl's triggers correctly since mid-2026, so the overlay was
+  silently regressing everything else in that file back to a 2026-06 vintage
+  on every build.
+
 ## [0.17.0]
 
 ### Added
