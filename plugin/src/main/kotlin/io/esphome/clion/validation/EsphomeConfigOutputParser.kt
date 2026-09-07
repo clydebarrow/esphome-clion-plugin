@@ -28,6 +28,15 @@ data class EsphomeDiagnostic(
      * in an `external_components:` list).
      */
     val platformValue: String? = null,
+    /**
+     * The block's top-level YAML key (e.g. `esphome` from a `sensor.dht` path,
+     * that's `sensor`), when [anchorLine] is 0 because ESPHome couldn't resolve a
+     * source line for the block at all (dumped as `<path>: None`). Lets the
+     * annotator anchor its file-wide offending-key search at the block's own
+     * section instead of the top of the file, where a generic key/value (like
+     * `name:`) could otherwise collide with an unrelated earlier occurrence.
+     */
+    val domain: String? = null,
     /** Highlight severity: errors fail the build; warnings are advisory. */
     val severity: EsphomeSeverity = EsphomeSeverity.ERROR,
 )
@@ -49,7 +58,12 @@ enum class EsphomeSeverity { ERROR, WARNING }
  *      password: secret                                   <- offending key
  *    ```
  *    So we scan line by line: a prose (non-`key:`) line is an error message; the
- *    next `key:` line is the offender.
+ *    next `key:` line is the offender. ESPHome sometimes can't resolve a source
+ *    location for the path (`line_info()` in its `config.py` falls back to the
+ *    literal string `None` when no document-range mark was tracked for it, e.g.
+ *    for some nested-schema errors) — `<path>: None` instead of `[source …]`.
+ *    Still a component block, just with no anchor line; the annotator locates
+ *    the offending key by searching the whole file instead.
  *
  * 2. **Top-level** — printed after `Failed config` with no source block, e.g.
  *    `Platform not found: 'binary_sensor.gpxo'`. No line info; we extract a
@@ -57,7 +71,7 @@ enum class EsphomeSeverity { ERROR, WARNING }
  */
 object EsphomeConfigOutputParser {
 
-    private val HEADER = Regex("""^(.+):\s+\[source\s+(.+):(\d+)]\s*$""")
+    private val HEADER = Regex("""^(.+):\s+(?:\[source\s+(.+):(\d+)]|None)\s*$""")
     private val YAML_KEY = Regex("""^[\w.\-]+:(\s.*)?$""")
     private val QUOTED = Regex("""'([^']+)'""")
     private val WARNING_LINE = Regex("""^WARNING\s+(.+)$""")
@@ -110,8 +124,9 @@ object EsphomeConfigOutputParser {
         while (i < lines.size) {
             val header = HEADER.matchEntire(lines[i].trimEnd())
             if (header != null) {
-                val file = header.groupValues[2]
-                val anchorLine = header.groupValues[3].toIntOrNull() ?: 1
+                // group(2) only participates on the `[source file:line]` branch;
+                // it's absent (null) when ESPHome dumped the bare `None` fallback.
+                val hasSource = header.groups[2] != null
                 i++
                 val body = mutableListOf<String>()
                 while (i < lines.size) {
@@ -120,7 +135,18 @@ object EsphomeConfigOutputParser {
                     body.add(line)
                     i++
                 }
-                diagnostics += parseBlock(body, file, anchorLine)
+                if (hasSource) {
+                    diagnostics += parseBlock(body, header.groupValues[2], header.groupValues[3].toIntOrNull() ?: 1)
+                } else if (includeTopLevelErrors) {
+                    // No source location to attribute this to a specific file by, so
+                    // only trust it for the file actually being validated — not a
+                    // fragment pulled in via its device root, where it could belong
+                    // to any file in the include graph. Pass the block's top-level
+                    // key (e.g. `esphome` from `esphome`, or `sensor` from
+                    // `sensor.dht`) as a fallback search anchor.
+                    val domain = header.groupValues[1].substringBefore('.')
+                    diagnostics += parseBlock(body, targetFile, anchorLine = 0, domain = domain)
+                }
                 continue
             }
 
@@ -140,7 +166,12 @@ object EsphomeConfigOutputParser {
     }
 
     /** Scan a component block body: prose line = error, following `key:` = offender. */
-    private fun parseBlock(body: List<String>, file: String, anchorLine: Int): List<EsphomeDiagnostic> {
+    private fun parseBlock(
+        body: List<String>,
+        file: String,
+        anchorLine: Int,
+        domain: String? = null,
+    ): List<EsphomeDiagnostic> {
         val diagnostics = mutableListOf<EsphomeDiagnostic>()
         val message = mutableListOf<String>()
 
@@ -161,6 +192,7 @@ object EsphomeConfigOutputParser {
                     ?.substringAfter(':', "")?.trim()?.takeIf { it.isNotBlank() }
                 diagnostics += EsphomeDiagnostic(
                     file, anchorLine, message.joinToString(" "), offendingKey, offendingValue,
+                    domain = domain,
                 )
                 message.clear()
             }

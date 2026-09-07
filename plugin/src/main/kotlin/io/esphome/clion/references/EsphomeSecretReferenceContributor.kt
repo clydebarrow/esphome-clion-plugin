@@ -40,17 +40,24 @@ private class EsphomeSecretReferenceProvider : PsiReferenceProvider() {
 /**
  * A soft reference from a `!secret <name>` scalar to its declaration. Soft so a
  * missing `secrets.yaml` (or an as-yet-undefined secret) isn't flagged as an
- * error — navigation simply does nothing until the target exists.
+ * error — navigation simply does nothing until the target exists. Not private:
+ * [EsphomeSecretReferenceSearcher] needs the type to identify our references
+ * among an element's (possibly mixed) reference array.
  */
-private class EsphomeSecretReference(
+class EsphomeSecretReference(
     scalar: YAMLScalar,
     rangeInElement: TextRange,
     private val name: String,
 ) : PsiReferenceBase<YAMLScalar>(scalar, rangeInElement, /* soft = */ true) {
 
+    /**
+     * Resolves to the whole `YAMLKeyValue`, not its key leaf: that's the shape
+     * [EsphomeSecret.declaredSecretName] now expects, matching what the bundled
+     * YAML plugin's own `PsiNamedElement` handling for a YAML key hands Find
+     * Usages/Cmd-click on the declaration side (see that doc comment).
+     */
     override fun resolve(): PsiElement? {
         val from = element.containingFile?.originalFile?.virtualFile ?: return null
-        val keyValue = EsphomeSecret.resolveSecret(element.project, from, name) ?: return null
-        return keyValue.key ?: keyValue
+        return EsphomeSecret.resolveSecret(element.project, from, name)
     }
 }

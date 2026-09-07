@@ -251,6 +251,94 @@ class EsphomeConfigOutputParserTest {
     }
 
     @Test
+    fun `parses a component block whose source location resolved to None`() {
+        // Captured from `esphome config`: an invalid `esphome.project` value.
+        // ESPHome's line_info() falls back to the literal `None` (not
+        // `[source file:line]`) when it can't resolve a document-range mark for
+        // the path — still a real component block, just with no anchor line.
+        val out = """
+            Failed config
+
+            esphome: None
+              name: ev-watchdog
+              friendly_name: EV Watchdog
+
+              expected a dictionary.
+              project: ev-watchdog
+              min_version: 2026.10.0-dev
+              build_path: build/ev-watchdog
+        """.trimIndent()
+        val diagnostics = EsphomeConfigOutputParser.parse(out, "test.yaml")
+        assertEquals(1, diagnostics.size)
+        assertEquals(0, diagnostics[0].anchorLine) // no resolvable source line
+        assertEquals("project", diagnostics[0].offendingKey)
+        assertEquals("ev-watchdog", diagnostics[0].offendingValue)
+        assertTrue(diagnostics[0].message.startsWith("expected a dictionary"))
+    }
+
+    @Test
+    fun `carries the block's top-level key as a domain hint for a None-sourced block`() {
+        // Captured: `esphome.project.name` needs a namespace, and `esphome.project`
+        // is separately missing `version` — both reported against `esphome: None`.
+        // Both diagnostics must carry `domain == "esphome"` so the annotator can
+        // anchor its search at the `esphome:` block instead of line 0, where a
+        // generic key like `name:` could collide with e.g. `substitutions.name`.
+        val out = """
+            Failed config
+
+            esphome: None
+              name: ev-watchdog
+              friendly_name: EV Watchdog
+
+              'version' is a required option for [project].
+              project:
+
+                project name needs to have a namespace.
+                name: ev-watchdog
+              min_version: 2026.10.0-dev
+              build_path: build/ev-watchdog
+        """.trimIndent()
+        val diagnostics = EsphomeConfigOutputParser.parse(out, "test.yaml")
+        assertEquals(2, diagnostics.size)
+        assertTrue(diagnostics.all { it.domain == "esphome" })
+
+        val namespaceError = diagnostics.single { it.offendingKey == "name" }
+        assertEquals("ev-watchdog", namespaceError.offendingValue)
+        assertTrue(namespaceError.message.startsWith("project name needs to have a namespace"))
+    }
+
+    @Test
+    fun `takes the first segment of a dotted domain path as the search anchor`() {
+        val out = """
+            Failed config
+
+            sensor.dht: None
+              some bad thing.
+              pin: 4
+        """.trimIndent()
+        val diagnostics = EsphomeConfigOutputParser.parse(out, "test.yaml")
+        assertEquals(1, diagnostics.size)
+        assertEquals("sensor", diagnostics[0].domain)
+    }
+
+    @Test
+    fun `drops a None-sourced block when validating a fragment via its root`() {
+        // No source location means we can't tell which file in the include graph
+        // it belongs to, so — like a headerless top-level error — it's only
+        // trusted for the file actually being validated, not pinned onto a
+        // fragment validated through its device root.
+        val out = """
+            Failed config
+
+            esphome: None
+              expected a dictionary.
+              project: x
+        """.trimIndent()
+        assertTrue(EsphomeConfigOutputParser.parse(out, "frag.yaml", includeTopLevelErrors = false).isEmpty())
+        assertEquals(1, EsphomeConfigOutputParser.parse(out, "frag.yaml", includeTopLevelErrors = true).size)
+    }
+
+    @Test
     fun `empty or success output yields no diagnostics`() {
         assertTrue(EsphomeConfigOutputParser.parse("", "x.yaml").isEmpty())
         assertTrue(EsphomeConfigOutputParser.parse("INFO Configuration is valid!", "x.yaml").isEmpty())

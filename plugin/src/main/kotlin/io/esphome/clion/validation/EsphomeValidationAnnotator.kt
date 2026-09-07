@@ -210,7 +210,8 @@ class EsphomeValidationAnnotator : ExternalAnnotator<EsphomeValidationAnnotator.
     /**
      * Choose the range to underline, or null to skip:
      *  - file-level errors (no source line) locate their token, e.g. a bad
-     *    platform value, and fall back to the first line;
+     *    platform value, and fall back to the first line (or the block's own
+     *    top-level key line, when known — see [EsphomeDiagnostic.domain]);
      *  - a warning is anchored only at its token — if it isn't in this file, the
      *    warning is skipped (it belongs to wherever the token lives);
      *  - "missing"/"required" errors keep the component anchor (the echoed key is
@@ -223,7 +224,22 @@ class EsphomeValidationAnnotator : ExternalAnnotator<EsphomeValidationAnnotator.
             // declaration, not the first stray occurrence of the token.
             diagnostic.platformValue?.let { findPlatformLine(document, it) }?.let { return it }
             diagnostic.searchToken?.let { findToken(document, it) }?.let { return it }
-            return if (diagnostic.severity == EsphomeSeverity.WARNING) null else trimmedLineRange(document, 0)
+            // A component block ESPHome dumped without a resolvable source line
+            // (`<path>: None` — see EsphomeConfigOutputParser). Search from the
+            // block's own top-level key line when we know it (e.g. `esphome:`),
+            // not line 0 — a generic offending key/value (like `name:`) can
+            // otherwise collide with an unrelated, earlier occurrence elsewhere in
+            // the file (e.g. under `substitutions:`).
+            val domainLine = diagnostic.domain?.let { matchLine(document, 0, Regex("""^${Regex.escape(it)}:""")) }
+            diagnostic.offendingKey
+                ?.takeUnless { ABSENCE_ERROR.containsMatchIn(diagnostic.message) }
+                ?.let { findOffendingLine(document, domainLine ?: 0, it, diagnostic.offendingValue) }
+                ?.let { return trimmedLineRange(document, it) }
+            return if (diagnostic.severity == EsphomeSeverity.WARNING) {
+                null
+            } else {
+                trimmedLineRange(document, domainLine ?: 0)
+            }
         }
         val anchor = (diagnostic.anchorLine - 1).coerceIn(0, document.lineCount - 1)
         val line = diagnostic.offendingKey

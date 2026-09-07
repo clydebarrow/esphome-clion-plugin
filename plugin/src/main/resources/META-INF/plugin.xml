@@ -64,6 +64,9 @@
         <referencesSearch implementation="io.esphome.clion.references.EsphomeIdReferenceSearcher"/>
         <findUsagesHandlerFactory implementation="io.esphome.clion.references.EsphomeIdFindUsagesHandlerFactory"/>
         <usageTargetProvider implementation="io.esphome.clion.references.EsphomeIdUsageTargetProvider"/>
+        <referencesSearch implementation="io.esphome.clion.references.EsphomeSecretReferenceSearcher"/>
+        <findUsagesHandlerFactory implementation="io.esphome.clion.references.EsphomeSecretFindUsagesHandlerFactory"/>
+        <usageTargetProvider implementation="io.esphome.clion.references.EsphomeSecretUsageTargetProvider"/>
         <targetElementEvaluator
             language="yaml"
             implementationClass="io.esphome.clion.references.EsphomeTargetElementEvaluator"/>
@@ -106,6 +109,15 @@
             enabledByDefault="true"
             level="WARNING"
             implementationClass="io.esphome.clion.inspections.EsphomeUnresolvedSubstitutionInspection"/>
+
+        <localInspection
+            language="yaml"
+            shortName="EsphomeUnresolvedSecret"
+            displayName="Unresolved ESPHome secret"
+            groupName="ESPHome"
+            enabledByDefault="true"
+            level="WARNING"
+            implementationClass="io.esphome.clion.inspections.EsphomeUnresolvedSecretInspection"/>
 
         <configurationType implementation="io.esphome.clion.run.EsphomeRunConfigurationType"/>
         <runConfigurationProducer

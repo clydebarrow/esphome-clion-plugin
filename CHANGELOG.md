@@ -7,6 +7,59 @@ release.
 
 ## [Unreleased]
 
+## [0.17.2]
+
+### Fixed
+
+- Secrets masking no longer hides `<<: !include ../secrets/other.yaml`-style
+  include directives, the `is_secrets_file:` marker key, or a leading
+  `---`/`---`-delimited front-matter block — only actual secret values are
+  masked now.
+- A file's secrets-file status (via the `is_secrets_file:` marker) now updates
+  live as you edit it, instead of only being picked up on reopen.
+- Fixed validation errors being highlighted on the wrong line (often the very
+  first line of the file) when ESPHome couldn't resolve a source location for
+  the error (dumped as `<component>: None` rather than `[source file:line]`,
+  e.g. an invalid `esphome.project` value) — the offending key is now located
+  by searching the file instead, anchored at the block's own top-level key
+  (e.g. `esphome:`) so a generic key like `name:` doesn't collide with an
+  unrelated earlier occurrence (e.g. under `substitutions:`).
+- Fixed `!secret` lookups (both navigation and the new unresolved-secret
+  inspection) never finding a key declared in a secrets file that has its own
+  `---`/`---` front-matter block: the front matter makes the file a
+  *multi-document* YAML stream, and the lookup was reading only the first
+  document (the front matter) instead of the real content after it.
+- Fixed secrets masking not resuming on a file left open across an IDE
+  restart: it stayed unmasked once revealed, no longer re-collapsing when the
+  caret moved away, until the file was closed and reopened. The IDE persists
+  fold-region state per file independently of this plugin, so on a
+  session-restored tab it recreates the previous masking fold *before* the
+  plugin's own code runs — silently losing track of it. Also switched to a
+  more reliable startup hook (`fileOpened`, which fires for session-restored
+  tabs) instead of relying solely on a one-shot sweep that could run before
+  those tabs' editors existed yet.
+
+### Added
+
+- Secrets masking now also applies to any file (not just `secrets.yaml`/
+  `secrets.yml`) that declares itself a secrets file with a top-level
+  `is_secrets_file: true` marker key, for secrets split across multiple files.
+- A file directly `<<: !include`d by a secrets file is now treated as part of
+  it: it's masked the same way (no `is_secrets_file:` marker needed), and
+  `!secret` references elsewhere resolve to keys declared in it — the same as
+  if they'd been declared in the top-level secrets file directly.
+- New inspection: a `!secret <name>` whose name matches no key in the nearest
+  secrets file (or its directly included file) is now flagged in the editor,
+  with a near-match quick-fix — previously this only surfaced on a validation
+  run (`esphome config`).
+- Find Usages now works from a secrets-file declaration too, not just from a
+  `!secret` usage — right-click (or Cmd-click) a `key:` in `secrets.yaml` to
+  see every place it's used. Scoped by filesystem proximity to the secrets
+  file (matching how `!secret` itself resolves), not the IDE's project index —
+  so it still works when the secrets file isn't under a registered project
+  content root (e.g. a device-config directory opened standalone, or attached
+  alongside an unrelated project in the same window).
+
 ## [0.17.1]
 
 ### Changed

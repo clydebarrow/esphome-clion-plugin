@@ -178,6 +178,87 @@ an upper bound without a reason).
 - **ESPHome publishes no JSON Schema.** If a task description assumes one
   exists (e.g. "just point `JsonSchemaFileProvider` at it"), that premise is
   wrong — see the data-source split above.
+- **A secrets file's `---`/`---` front-matter block (the `is_secrets_file`
+  marker convention) makes the file a *multi-document* YAML stream.** Any code
+  reading a secrets file's real content via PSI must use
+  `yaml.documents.lastOrNull()`, not `.firstOrNull()` — the first document is
+  the front matter itself. `EsphomeSecret.topLevelMapping` (used by
+  `secretEntries`/`isIncludedBySecretsFile`) got this wrong once already (bit a
+  real secrets file that used front matter — `!secret` silently failed to
+  resolve past it, with no error). The line-based masking code in
+  `EsphomeSecretLines`/`EsphomeSecretMasking` is unaffected (it never parses
+  YAML documents, just scans text lines), but any *new* PSI-based secrets code
+  needs the same `lastOrNull()` treatment.
+- **A YAML mapping *key* (`name:`) is not a `YAMLScalar` — a *value* is, but
+  the "declaration element" for a key is the whole `YAMLKeyValue`, not its
+  key's bare leaf token.** A scalar value gets wrapped in a composite PSI
+  element (`YAMLScalar`, e.g. `YAMLPlainTextImpl`); a mapping key is a bare
+  leaf token (`LeafPsiElement`, elementType `scalar key`) parented *directly*
+  by the `YAMLKeyValue` — no wrapper at all. This bit secrets find-usages
+  twice in the same feature: first, code that walks up from a caret position
+  with `PsiTreeUtil.getParentOfType(element, YAMLScalar::class.java, false)`
+  (the id find-usages pattern, correct there since an `id:` declaration lives
+  on the *value* side) silently finds nothing for a key-side declaration —
+  `getParentOfType` returns null, not a wrong answer, so it fails quietly.
+  Second, and much less obvious: once code was written to accept the bare key
+  leaf directly instead, it still didn't work in a real IDE, though it passed
+  every test — because the *bundled YAML plugin already treats the whole
+  `YAMLKeyValue` as the `PsiNamedElement` for a YAML key*, and the platform
+  resolves a real Cmd-click/Find-Usages invocation to that `YAMLKeyValue`
+  *before* ever consulting a custom `TargetElementEvaluator`/
+  `UsageTargetProvider` — confirmed by temporarily logging what
+  `FindUsagesHandlerFactory.canFindUsages`/`ReferencesSearch` actually receive
+  (`element=YAML key value`, a `YAMLKeyValue`, never the leaf). Tests missed
+  this because they built the target element by hand
+  (`file.findElementAt(offset)`) and fed it straight to `myFixture.findUsages`,
+  never exercising the platform's own target-resolution
+  (`TargetElementUtil.findTargetElement`) the real gesture goes through — see
+  `EsphomeSecretFindUsagesTest`'s "works end-to-end from the caret via
+  platform target resolution" test, added specifically to close this gap.
+  `EsphomeSecret.declaredSecretName` now takes the `YAMLKeyValue` itself, and
+  `EsphomeSecretReference.resolve()` returns it directly (not `.key`). Lesson
+  for any *new* declaration-like feature: don't just find "the right PSI
+  node" from a caret offset — verify what the platform's own default handling
+  for that language already treats as the named element, ideally by logging
+  the actual target a real invocation produces, not by only testing a
+  hand-built element.
+- **`GlobalSearchScope.allScope(project)` / `FileTypeIndex` only cover files
+  under a *registered module content root* — a `secrets.yaml` (or any config)
+  doesn't have to sit inside one.** Hit this building secrets Find Usages: it
+  worked in every light-fixture test (which registers a proper content root)
+  but found zero usages in a real report, because that user's IDE window had
+  a *different, unrelated* project as the active `Project` (confirmed by
+  logging the "files in scope" — they were from that other project entirely,
+  none from the device-config directory actually being edited). A device
+  config directory opened standalone, or attached alongside another project
+  in the same window, is a completely normal setup — don't assume the file
+  you're resolving from is under `project`'s own content roots.
+  `EsphomeSecretReferenceSearcher` no longer uses the index at all: it walks
+  the filesystem (`VfsUtilCore.iterateChildrenRecursively`) down from the
+  secrets file's own directory instead, matching how
+  `EsphomeSecret.findSecretsFile` already resolves `!secret` — by filesystem
+  proximity, same as ESPHome itself, not by IDE project structure. Prefer this
+  pattern over index/scope-based search for anything rooted in "near this
+  file on disk," not "somewhere in this project."
+- **The IDE persists fold-region state per file, independently of any plugin
+  — a session-restored tab can already have fold regions at the exact ranges
+  a previous session's plugin code created, recreated by the platform
+  *before* the plugin's own startup code runs.** Bit `EsphomeSecretMasker`:
+  on a restart, its `rebuild()` tried `FoldingModelEx.addFoldRegion()` at
+  those same ranges and got `null` back for *every* one (confirmed by
+  logging: `linesWithValue=18 regionsCreatedNull=18`), since a region already
+  existed there — so `ourRegions` ended up empty, nothing was left to
+  re-collapse on caret move, and the file stayed unmasked once revealed until
+  closed and reopened. Fixed by checking
+  `com.intellij.codeInsight.folding.impl.FoldingUtil.findFoldRegion(editor,
+  start, end)` first and adopting that region if one already exists, instead
+  of only trying to create a new one. Relatedly: `ProjectActivity`
+  (`postStartupActivity`) can run *before* session-restored tabs' editors
+  exist, so a one-shot `EditorFactory.allEditors` sweep at startup isn't
+  reliable for them either (no later `editorCreated` fires since those
+  editors already existed) — subscribe to
+  `FileEditorManagerListener.FILE_EDITOR_MANAGER`'s `fileOpened` too, which
+  reliably fires for every file that becomes visible, restored tabs included.
 
 ## Where things live
 
