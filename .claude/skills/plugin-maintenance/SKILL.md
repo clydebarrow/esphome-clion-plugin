@@ -152,8 +152,70 @@ available on future IDE releases without a republish each cycle; every release
 still runs through `verifyPlugin` for binary compatibility, so don't reintroduce
 an upper bound without a reason).
 
+## Triaging Marketplace verifier warnings
+
+Marketplace runs the Plugin Verifier against each release and reports
+"scheduled for removal" / "deprecated" / "experimental" API usages, grouped by
+member with a usage count (checked against multiple IDE versions, so counts
+are often 2x a single call site). Not all of them are ours to fix:
+
+- **Check whether we actually call it, or just implement an interface that
+  declares it.** `ToolWindowFactory`'s `isApplicable`/`isDoNotActivateOnStart`
+  (deprecated) and `getAnchor`/`getIcon`/`manage(...)` (experimental) show up
+  purely because `EsphomeApiToolWindowFactory implements ToolWindowFactory` —
+  we override none of them (icon/anchor come from `plugin.xml` XML attributes
+  instead). Nothing to change; they'll stop appearing on their own if/when
+  JetBrains removes or stabilizes them.
+- **"Scheduled for removal" is the one worth actually fixing** — find the
+  direct replacement and swap it, e.g. (both fixed 2026-09):
+  `PathEnvironmentVariableUtil.findInPath(String)` →
+  `findExecutableInPathOnAnyOS(String)` (also more correct: it handles
+  Windows executable extensions and OS-specific search properly, which
+  `findInPath` left to the caller); `SimpleListCellRenderer.create(Customizer)`
+  (the 3-arg-lambda form, `{ label, value, _ -> ... }`) →
+  `create(emptyText, converter)` (`{ value -> ... }` returning the display
+  string — confirmed via bytecode that only the `Customizer` overload carries
+  the `Deprecated` attribute, not the `String, Function` one).
+- **To find the real replacement instead of guessing**: `javap -p` the
+  platform class (see the floating-toolbar gotcha above for where to find the
+  jars) and read the *other* methods on it — usually the modern replacement
+  sits right next to the deprecated one. `javap -v` shows `Deprecated: true`
+  per-overload when only *one* overload of several is actually flagged (as
+  with `SimpleListCellRenderer.create`), which plain source reading or the
+  verifier's summary line won't tell you.
+- **Don't guess at "this is probably now a safe no-op" to silence a
+  deprecation** — verify from bytecode/docs first, or leave it. Left
+  `Disposer.isDisposed(Disposable)` (1 usage, in `EsphomeSecretMasking`'s
+  `detach`) alone for exactly this reason: tracing into `dispose()`'s
+  bytecode didn't confirm whether calling it twice is truly safe, and a wrong
+  guess there risks a real double-dispose bug for a cosmetic warning fix.
+- `runReadAction` → `runReadActionBlocking` is a safe drop-in (same
+  non-suspend signature, `<T> T` in, `<T> T` out) wherever the call site
+  isn't already in a suspend/coroutine context.
+
 ## Gotchas worth knowing before you spend time rediscovering them
 
+- **`since-build=242` with no `until-build` means the plugin must keep working
+  on platform versions that don't exist yet — a platform API change on a
+  newer IDE build can silently break a feature with no compile error and no
+  runtime exception.** Hit this for real: the editor floating toolbar (Run /
+  Logs / Open Device Window) stopped appearing at all on CLion 2026.2 (build
+  262), with nothing in idea.log. Root cause: `AbstractFloatingToolbarProvider`
+  offered two `register()` overloads on 2026.1.1 — the 2-arg one our code
+  overrode, and a 3-arg one (leading `DataContext`) that the interface
+  actually declares — where the 2-arg one was a source-compat shim that
+  delegated to the 3-arg one. Build 262 dropped that shim entirely, so our
+  2-arg `override fun register(...)` stopped overriding anything: it still
+  compiled and ran with zero errors on *either* version, it just silently
+  stopped being invoked on 262+, since the platform always calls the 3-arg
+  method. Found by `javap`-diffing `AbstractFloatingToolbarProvider.class`
+  between the two platform jars (`~/Applications/CLion.app/Contents/lib/` for
+  the newer one; the Gradle-cached `CLion-<version>-aarch64/lib/` transform
+  dir for an older one) — *when a UI feature silently vanishes with no
+  exception on a newer IDE build the user has but this repo doesn't build
+  against, suspect exactly this pattern* and diff the relevant platform class
+  the same way rather than guessing from source alone. Fixed by overriding
+  the 3-arg signature instead, which exists unchanged on both versions.
 - **Plugin reload/install-from-disk always forces a full IDE restart** in dev
   (2026.1). Investigated at length — all EPs are `dynamic="true"`, file-based
   indexes and the API connection thread are both ruled out as sole causes, cause

@@ -57,7 +57,7 @@ class EsphomeSettings : SimplePersistentStateComponent<EsphomeSettings.State>(St
         if (configured.isNotEmpty()) {
             return configured.takeIf { File(it).canExecute() }
         }
-        return PathEnvironmentVariableUtil.findInPath("esphome")?.absolutePath
+        return PathEnvironmentVariableUtil.findExecutableInPathOnAnyOS("esphome")?.absolutePath
     }
 
     /** Persistent host cache directory mounted into the Docker container's `/cache`. */

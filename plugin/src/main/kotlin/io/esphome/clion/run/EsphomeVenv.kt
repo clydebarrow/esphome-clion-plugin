@@ -35,8 +35,8 @@ object EsphomeVenv {
         if (SystemInfo.isWindows) File(dir(), "Scripts/$name.exe") else File(dir(), "bin/$name")
 
     private fun basePython(): String =
-        PathEnvironmentVariableUtil.findInPath(if (SystemInfo.isWindows) "python" else "python3")?.absolutePath
-            ?: PathEnvironmentVariableUtil.findInPath("python")?.absolutePath
+        PathEnvironmentVariableUtil.findExecutableInPathOnAnyOS(if (SystemInfo.isWindows) "python" else "python3")?.absolutePath
+            ?: PathEnvironmentVariableUtil.findExecutableInPathOnAnyOS("python")?.absolutePath
             ?: "python3"
 
     /**

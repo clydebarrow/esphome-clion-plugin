@@ -189,7 +189,7 @@ object EsphomeCommandLines {
 
     /** Resolved `docker` path, or null when it can't be located. */
     fun findDocker(): String? =
-        PathEnvironmentVariableUtil.findInPath("docker")?.absolutePath
+        PathEnvironmentVariableUtil.findExecutableInPathOnAnyOS("docker")?.absolutePath
             ?: DOCKER_FALLBACKS.firstOrNull { File(it).canExecute() }
 
     private val DOCKER_FALLBACKS = listOf(

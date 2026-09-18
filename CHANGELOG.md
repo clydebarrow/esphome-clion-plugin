@@ -7,6 +7,25 @@ release.
 
 ## [Unreleased]
 
+## [0.17.3]
+
+### Fixed
+
+- Fixed the editor floating toolbar (Run / Logs / Open Device Window) not
+  appearing at all on CLion/IntelliJ 2026.2 (build 262) and newer — a platform
+  API change dropped a compatibility overload our code relied on, so our
+  override silently stopped being called (no error, just no toolbar). Fixed
+  by switching to the method signature that exists on both old and new
+  platform versions.
+- Resolved the Marketplace verifier's "scheduled for removal" API warnings:
+  `PathEnvironmentVariableUtil.findInPath` → `findExecutableInPathOnAnyOS`,
+  and the deprecated `SimpleListCellRenderer.create(Customizer)` form →
+  `create(emptyText, converter)`. Also cleared two straightforward
+  "deprecated API" warnings (`runReadAction` → `runReadActionBlocking`); the
+  `ToolWindowFactory`/`FloatingToolbarProvider.isApplicable`/
+  `Disposer.isDisposed` warnings remain — see the plugin-maintenance skill
+  for why they're not (yet) actionable.
+
 ## [0.17.2]
 
 ### Fixed

@@ -3,7 +3,7 @@ package io.esphome.clion.secrets
 import com.intellij.codeInsight.folding.impl.FoldingUtil
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.application.runReadAction
+import com.intellij.openapi.application.runReadActionBlocking
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Editor
@@ -111,7 +111,7 @@ class EsphomeSecretMaskingStartup : ProjectActivity {
             val byInclusion = if (byName || byMarker) {
                 false
             } else {
-                editor.getUserData(INCLUDED_KEY) ?: runReadAction {
+                editor.getUserData(INCLUDED_KEY) ?: runReadActionBlocking {
                     EsphomeSecret.isIncludedBySecretsFile(project, virtualFile)
                 }.also { editor.putUserData(INCLUDED_KEY, it) }
             }

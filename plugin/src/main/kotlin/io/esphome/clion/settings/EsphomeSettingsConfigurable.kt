@@ -34,8 +34,8 @@ class EsphomeSettingsConfigurable : BoundConfigurable("ESPHome") {
             row("Default backend:") {
                 comboBox(listOf(BACKEND_LOCAL, BACKEND_VENV, BACKEND_DOCKER))
                     .applyToComponent {
-                        renderer = SimpleListCellRenderer.create { label, value, _ ->
-                            label.text = when (value) {
+                        renderer = SimpleListCellRenderer.create("") { value ->
+                            when (value) {
                                 BACKEND_DOCKER -> "Docker"
                                 BACKEND_VENV -> "Managed venv"
                                 BACKEND_LOCAL -> "Local esphome"
