@@ -189,9 +189,26 @@ are often 2x a single call site). Not all of them are ours to fix:
   `detach`) alone for exactly this reason: tracing into `dispose()`'s
   bytecode didn't confirm whether calling it twice is truly safe, and a wrong
   guess there risks a real double-dispose bug for a cosmetic warning fix.
-- `runReadAction` → `runReadActionBlocking` is a safe drop-in (same
-  non-suspend signature, `<T> T` in, `<T> T` out) wherever the call site
-  isn't already in a suspend/coroutine context.
+- **A replacement method found on the *newest* platform jar isn't
+  automatically safe — it has to exist on the *oldest* one too
+  (`since-build=242`), and a plain `javap` diff against one old jar doesn't
+  prove that on its own.** Got this wrong for real: swapped the deprecated
+  `runReadAction` for `runReadActionBlocking` in 0.17.3 (looked like a safe
+  same-signature drop-in), shipped it, and the *next* Marketplace
+  verification failed with "unresolved method
+  ActionsKt.runReadActionBlocking" — it doesn't exist that far back in the
+  242+ range, so it would have thrown `NoSuchMethodError` on those IDEs.
+  Reverted to `runReadAction` in 0.17.4; the deprecation warning is the
+  correct trade-off over a runtime crash on older IDEs. Lesson: for a
+  "deprecated, not scheduled for removal" warning, the *fix* is more likely
+  to be the compatibility risk than the warning itself — either run
+  `./gradlew :plugin:verifyPlugin` locally before tagging (it resolves and
+  checks against the *whole* configured IDE range, ~8 versions down to
+  2024.2 — slow, several minutes including first-time downloads, which is
+  exactly why CI doesn't gate on it, but worth it right after a
+  deprecation-driven change) or leave a "just deprecated" warning alone
+  unless you can confirm the replacement's minimum-supported-version from
+  actual docs, not just its presence on one newer jar.
 
 ## Gotchas worth knowing before you spend time rediscovering them
 

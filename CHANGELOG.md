@@ -7,6 +7,18 @@ release.
 
 ## [Unreleased]
 
+## [0.17.4]
+
+### Fixed
+
+- Fixed a compatibility regression from 0.17.3: `runReadActionBlocking`
+  (swapped in there for the deprecated `runReadAction`) doesn't exist on IDE
+  builds near the `since-build` floor (242) — the Marketplace verifier
+  flagged it as an unresolved method, meaning it would have thrown
+  `NoSuchMethodError` on those older IDEs. Reverted to `runReadAction`,
+  which is present across the full supported range; the "deprecated" warning
+  it carries is the safer trade-off here.
+
 ## [0.17.3]
 
 ### Fixed

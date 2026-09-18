@@ -3,7 +3,7 @@ package io.esphome.clion.run
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DataContext
-import com.intellij.openapi.application.runReadActionBlocking
+import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.editor.toolbar.floating.AbstractFloatingToolbarProvider
 import com.intellij.openapi.editor.toolbar.floating.FloatingToolbarComponent
 import io.esphome.clion.psi.EsphomeYaml
@@ -27,7 +27,7 @@ class EsphomeEditorFloatingToolbarProvider : AbstractFloatingToolbarProvider(GRO
     override fun isApplicable(dataContext: DataContext): Boolean =
         // Both the PSI_FILE lookup and isStandaloneConfig touch PSI, so the whole
         // thing runs under a read action — isApplicable may be called off the EDT.
-        runReadActionBlocking {
+        runReadAction {
             val file = dataContext.getData(CommonDataKeys.PSI_FILE) as? YAMLFile
             file != null && EsphomeYaml.isStandaloneConfig(file)
         }
