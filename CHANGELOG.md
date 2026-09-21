@@ -7,6 +7,19 @@ release.
 
 ## [Unreleased]
 
+## [0.17.5]
+
+### Fixed
+
+- The ESPHome Device window's Host and Key fields no longer collapse to a
+  sliver when the window is narrow: they now take the available width and
+  shrink gracefully down to a usable minimum.
+
+### Changed
+
+- The Device window's encryption Key field is now masked with dots unless it
+  has focus.
+
 ## [0.17.4]
 
 ### Fixed

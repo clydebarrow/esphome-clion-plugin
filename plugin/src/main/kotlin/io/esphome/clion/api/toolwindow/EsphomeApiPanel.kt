@@ -13,6 +13,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.openapi.wm.ex.ToolWindowManagerListener
 import com.intellij.ui.components.JBLabel
+import com.intellij.ui.components.JBPasswordField
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextField
 import com.intellij.util.ui.JBUI
@@ -21,10 +22,14 @@ import io.esphome.clion.api.EsphomeApiTarget
 import io.esphome.clion.api.proto.ApiEntity
 import io.esphome.clion.api.proto.ApiState
 import java.awt.BorderLayout
+import java.awt.Dimension
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
+import java.awt.event.FocusAdapter
+import java.awt.event.FocusEvent
 import javax.swing.JButton
 import javax.swing.JPanel
+import javax.swing.JTextField
 import javax.swing.Timer
 
 /**
@@ -39,8 +44,18 @@ class EsphomeApiPanel(private val project: Project) :
 
     private val entityView = EntityListView()
     private val pendingEntities = mutableListOf<ApiEntity>()
-    private val hostField = JBTextField(22)
-    private val keyField = JBTextField(44).apply { emptyText.text = "blank = plaintext; base64 key for encrypted api:" }
+    private val hostField = JBTextField(22).apply { keepUsableWhenNarrow() }
+    // The encryption key is a credential: shown as dots except while the field has focus.
+    private val keyField = JBPasswordField().apply {
+        columns = 44
+        emptyText.text = "blank = plaintext; base64 key for encrypted api:"
+        echoChar = KEY_ECHO_CHAR
+        addFocusListener(object : FocusAdapter() {
+            override fun focusGained(e: FocusEvent) { echoChar = 0.toChar() }
+            override fun focusLost(e: FocusEvent) { echoChar = KEY_ECHO_CHAR }
+        })
+        keepUsableWhenNarrow()
+    }
     private val connectButton = JButton("Disconnect").apply {
         // Freeze the width at the wider label so toggling Connect/Disconnect
         // doesn't resize the button and shift the row.
@@ -75,12 +90,11 @@ class EsphomeApiPanel(private val project: Project) :
         val controls = JPanel(GridBagLayout()).apply {
             add(connectButton, gbc(0, 0))
             add(JBLabel("Host:"), gbc(1, 0))
-            add(hostField, gbc(2, 0))
+            // The fields take all the spare width and give it back first when the
+            // window narrows (down to a usable minimum) — not the label/button column.
+            add(hostField, gbc(2, 0, grow = true))
             add(JBLabel("Key:"), gbc(1, 1))
-            add(keyField, gbc(2, 1))
-            // Trailing glue: keep the fields at their natural width, left-aligned,
-            // instead of stretching the whole tool window wide.
-            add(JPanel().apply { isOpaque = false }, gbc(3, 0, grow = true, height = 2))
+            add(keyField, gbc(2, 1, grow = true))
         }
         val header = JPanel(BorderLayout()).apply {
             border = JBUI.Borders.empty(6)
@@ -154,7 +168,7 @@ class EsphomeApiPanel(private val project: Project) :
         // Don't touch the fields/status while connected or mid-reconnect.
         if (connection != null || active) return
         if (hostField.text.isBlank() && derived.host != null) hostField.text = hostPort(derived.host, derived.port)
-        if (keyField.text.isBlank() && derived.encryptionKey != null) keyField.text = derived.encryptionKey
+        if (keyText.isBlank() && derived.encryptionKey != null) keyText = derived.encryptionKey
         updateReadyStatus(derived)
     }
 
@@ -174,12 +188,12 @@ class EsphomeApiPanel(private val project: Project) :
         }
         target = derived
         val previousHost = hostField.text
-        val previousKey = keyField.text
+        val previousKey = keyText
         derived.host?.let { hostField.text = hostPort(it, derived.port) }
-        derived.encryptionKey?.let { keyField.text = it }
+        derived.encryptionKey?.let { keyText = it }
         if (connection == null) updateReadyStatus(derived)
 
-        val targetChanged = hostField.text != previousHost || keyField.text != previousKey
+        val targetChanged = hostField.text != previousHost || keyText != previousKey
         when {
             // Connected to a different device now: drop it and connect to the new one.
             active && targetChanged -> {
@@ -197,9 +211,19 @@ class EsphomeApiPanel(private val project: Project) :
         val device = derived.deviceName ?: "device"
         statusLabel.text = when {
             !derived.hasApi -> "No api: in the open config — enter host:port to connect."
-            derived.encryptionKey != null || keyField.text.isNotBlank() -> "Ready — Connect to $device (encrypted)."
+            derived.encryptionKey != null || keyText.isNotBlank() -> "Ready — Connect to $device (encrypted)."
             else -> "Ready — Connect to $device (no key found; paste one if it's encrypted)."
         }
+    }
+
+    /** The key field's contents (a `JPasswordField` has no non-deprecated `text`). */
+    private var keyText: String
+        get() = String(keyField.password)
+        set(value) = keyField.setText(value)
+
+    /** Without an explicit minimum a text field collapses to a sliver in a narrow GridBag. */
+    private fun JTextField.keepUsableWhenNarrow() {
+        minimumSize = Dimension(JBUI.scale(MIN_FIELD_WIDTH), preferredSize.height)
     }
 
     private fun gbc(x: Int, y: Int, grow: Boolean = false, width: Int = 1, height: Int = 1): GridBagConstraints =
@@ -224,7 +248,7 @@ class EsphomeApiPanel(private val project: Project) :
         val (host, port) = parseHostPort(raw)
         pendingEntities.clear()
         entityView.clear()
-        val key = keyField.text.trim().ifEmpty { null }
+        val key = keyText.trim().ifEmpty { null }
         val conn = EsphomeApiConnection(host, port, target?.password, key, ConnectionListener(token))
         connection = conn
         connectButton.text = "Disconnect"
@@ -342,6 +366,8 @@ class EsphomeApiPanel(private val project: Project) :
     }
 
     private companion object {
+        const val KEY_ECHO_CHAR = '\u2022'
+        const val MIN_FIELD_WIDTH = 120
         const val RECONNECT_BASE_SEC = 5
         const val RECONNECT_MAX_SEC = 30
         /** Cap on how long dispose waits for the reader thread; the socket close unblocks it at once. */
