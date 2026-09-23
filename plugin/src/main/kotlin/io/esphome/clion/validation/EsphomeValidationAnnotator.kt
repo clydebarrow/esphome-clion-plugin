@@ -218,7 +218,7 @@ class EsphomeValidationAnnotator : ExternalAnnotator<EsphomeValidationAnnotator.
      *    just nearby context — the real problem is an *absent* key);
      *  - otherwise refine to the offending key's line.
      */
-    private fun rangeFor(document: Document, diagnostic: EsphomeDiagnostic): TextRange? {
+    internal fun rangeFor(document: Document, diagnostic: EsphomeDiagnostic): TextRange? {
         if (diagnostic.anchorLine <= 0) {
             // A "Platform not found" error: anchor on the `- platform: <value>`
             // declaration, not the first stray occurrence of the token.
@@ -233,7 +233,7 @@ class EsphomeValidationAnnotator : ExternalAnnotator<EsphomeValidationAnnotator.
             val domainLine = diagnostic.domain?.let { matchLine(document, 0, Regex("""^${Regex.escape(it)}:""")) }
             diagnostic.offendingKey
                 ?.takeUnless { ABSENCE_ERROR.containsMatchIn(diagnostic.message) }
-                ?.let { findOffendingLine(document, domainLine ?: 0, it, diagnostic.offendingValue) }
+                ?.let { findOffendingLine(document, domainLine ?: 0, it, diagnostic.offendingValue, diagnostic.parentKey) }
                 ?.let { return trimmedLineRange(document, it) }
             return if (diagnostic.severity == EsphomeSeverity.WARNING) {
                 null
@@ -244,7 +244,7 @@ class EsphomeValidationAnnotator : ExternalAnnotator<EsphomeValidationAnnotator.
         val anchor = (diagnostic.anchorLine - 1).coerceIn(0, document.lineCount - 1)
         val line = diagnostic.offendingKey
             ?.takeUnless { ABSENCE_ERROR.containsMatchIn(diagnostic.message) }
-            ?.let { findOffendingLine(document, anchor, it, diagnostic.offendingValue) }
+            ?.let { findOffendingLine(document, anchor, it, diagnostic.offendingValue, diagnostic.parentKey) }
             ?: anchor
         return trimmedLineRange(document, line)
     }
@@ -270,19 +270,76 @@ class EsphomeValidationAnnotator : ExternalAnnotator<EsphomeValidationAnnotator.
      * `component.update: m` is dumped as `id: m`), fall back to the line whose
      * *value* is that id token (the `component.update: m` line). Finally fall
      * back to the first line with the bare key — or null if none.
+     *
+     * [parentKey], when known, disambiguates a `key: value` pair that matches
+     * more than once in the file — e.g. an `id:`-reference error's own
+     * `id: my_id` line versus `my_id`'s unrelated `id:` *declaration* elsewhere.
+     * ESPHome often anchors these errors on the whole enclosing block (a whole
+     * `lvgl:` tree, say) rather than the specific nested action, so the first
+     * textual match going forward is not reliably the right one; a match nested
+     * under a source line containing [parentKey] (e.g.
+     * `binary_sensor.template.publish:`) is preferred over an earlier one that
+     * isn't.
      */
-    private fun findOffendingLine(document: Document, fromLine: Int, key: String, value: String?): Int? {
+    private fun findOffendingLine(document: Document, fromLine: Int, key: String, value: String?, parentKey: String? = null): Int? {
         val escapedKey = Regex.escape(key)
         if (!value.isNullOrEmpty()) {
             val escapedValue = Regex.escape(value)
             // `key: value` (tolerating quotes ESPHome may strip/add around the value).
-            matchLine(document, fromLine, Regex("""^\s*$escapedKey:\s*["']?$escapedValue["']?\s*$"""))?.let { return it }
+            findMatchingLine(document, fromLine, Regex("""^\s*$escapedKey:\s*["']?$escapedValue["']?\s*$"""), parentKey)
+                ?.let { return it }
             // The value as some key's whole value — finds the shorthand the dump expanded.
             if (value.matches(ID_TOKEN)) {
-                matchLine(document, fromLine, Regex(""":\s*$escapedValue\s*$"""))?.let { return it }
+                findMatchingLine(document, fromLine, Regex(""":\s*$escapedValue\s*$"""), parentKey)?.let { return it }
             }
         }
         return matchLine(document, fromLine, Regex("""^\s*$escapedKey:"""))
+    }
+
+    /**
+     * Like [matchLine], but among lines matching [needle] prefers one whose
+     * nearer, less-indented ancestor line contains [parentKey] — falling back to
+     * the first match (identical to [matchLine]) when [parentKey] is null or no
+     * match has such an ancestor.
+     */
+    private fun findMatchingLine(document: Document, fromLine: Int, needle: Regex, parentKey: String?): Int? {
+        if (parentKey == null) return matchLine(document, fromLine, needle)
+        val text = document.charsSequence
+        var fallback: Int? = null
+        for (line in fromLine until document.lineCount) {
+            val slice = text.subSequence(document.getLineStartOffset(line), document.getLineEndOffset(line))
+            if (!needle.containsMatchIn(slice)) continue
+            if (fallback == null) fallback = line
+            if (hasAncestorContaining(document, line, parentKey)) return line
+        }
+        return fallback
+    }
+
+    /**
+     * Whether some less-indented line within [PARENT_LOOKBACK] lines above
+     * [line] contains [needle] — a cheap stand-in for "is this line nested under
+     * a source line matching the dump's enclosing key", since we don't parse the
+     * source file's own YAML structure here.
+     */
+    private fun hasAncestorContaining(document: Document, line: Int, needle: String): Boolean {
+        val text = document.charsSequence
+        val ownIndent = indentOf(text, document, line) ?: return false
+        for (l in line - 1 downTo maxOf(0, line - PARENT_LOOKBACK)) {
+            val lineText = text.subSequence(document.getLineStartOffset(l), document.getLineEndOffset(l))
+            if (lineText.isBlank()) continue
+            val indent = indentOf(text, document, l) ?: continue
+            if (indent >= ownIndent) continue
+            if (lineText.contains(needle)) return true
+        }
+        return false
+    }
+
+    /** The column of the first non-whitespace character on [line], or null if it's blank. */
+    private fun indentOf(text: CharSequence, document: Document, line: Int): Int? {
+        val start = document.getLineStartOffset(line)
+        val end = document.getLineEndOffset(line)
+        for (i in start until end) if (!text[i].isWhitespace()) return i - start
+        return null
     }
 
     private fun matchLine(document: Document, fromLine: Int, needle: Regex): Int? {
@@ -307,6 +364,8 @@ class EsphomeValidationAnnotator : ExternalAnnotator<EsphomeValidationAnnotator.
 
     companion object {
         private const val TIMEOUT_MS = 30_000
+        /** How far above a candidate match to look for its [EsphomeDiagnostic.parentKey]. */
+        private const val PARENT_LOOKBACK = 60
         private val executableWarningShown = java.util.concurrent.atomic.AtomicBoolean(false)
         private val ABSENCE_ERROR =
             Regex("""(?i)\b(missing|required|must include|must specify|must provide|not provided)\b""")

@@ -12,13 +12,19 @@ import org.jetbrains.yaml.psi.YAMLScalar
 
 /**
  * Makes `id:` declarations findable from the *declaration* side: a
- * `ReferencesSearch` over an id declaration scalar yields every
- * [EsphomeIdReference] that resolves to it, across the file's `!include` graph.
+ * `ReferencesSearch` over an id declaration scalar yields every reference that
+ * resolves to it — plain id-value usages ([EsphomeIdReference], including an
+ * `!extend`/`!remove` override) and `id(<name>)` calls inside a `lambda:`
+ * string ([EsphomeLambdaIdReference]) — across the file's `!include` graph.
  *
  * This is the keystone for Find Usages and Rename — our references are soft and
  * resolve forward (reference → declaration), but the default caches-based
  * searcher can't walk that backwards because a YAML scalar isn't a
- * `PsiNamedElement`. Phase 3 follow-up (`docs/roadmap-includes-and-navigation.md`).
+ * `PsiNamedElement`. Every reference on every scalar is checked via
+ * `isReferenceTo` rather than pre-filtering by `scalar.textValue`: a lambda's
+ * scalar holds the whole lambda body, not just the id name, so a text-equality
+ * pre-filter would silently skip every `id()` call inside it. Phase 3 follow-up
+ * (`docs/roadmap-includes-and-navigation.md`).
  */
 class EsphomeIdReferenceSearcher :
     QueryExecutorBase<PsiReference, ReferencesSearch.SearchParameters>(/* readAction = */ true) {
@@ -28,7 +34,7 @@ class EsphomeIdReferenceSearcher :
         consumer: Processor<in PsiReference>,
     ) {
         val target = queryParameters.elementToSearch as? YAMLScalar ?: return
-        val name = EsphomeIdReferences.declaredIdName(target) ?: return
+        EsphomeIdReferences.declaredIdName(target) ?: return
         val project = target.project
         val virtualFile = target.containingFile?.originalFile?.virtualFile ?: return
         val psiManager = PsiManager.getInstance(project)
@@ -36,9 +42,8 @@ class EsphomeIdReferenceSearcher :
         for (file in EsphomeIncludeGraph.getInstance(project).connectedFiles(virtualFile)) {
             val yaml = psiManager.findFile(file) as? YAMLFile ?: continue
             for (scalar in PsiTreeUtil.findChildrenOfType(yaml, YAMLScalar::class.java)) {
-                if (scalar.textValue != name) continue
                 for (reference in scalar.references) {
-                    if (reference is EsphomeIdReference && reference.isReferenceTo(target)) {
+                    if (reference.isReferenceTo(target)) {
                         consumer.process(reference)
                     }
                 }

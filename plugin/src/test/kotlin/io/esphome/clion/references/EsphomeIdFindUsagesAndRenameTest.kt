@@ -129,6 +129,33 @@ class EsphomeIdFindUsagesAndRenameTest : BasePlatformTestCase() {
         assertEquals("device.yaml", usages.single().file!!.name)
     }
 
+    fun `test find usages finds an id() call inside a lambda`() {
+        // Regression guard: EsphomeIdReferenceSearcher used to pre-filter by
+        // `scalar.textValue == name`, which skips a lambda's scalar entirely (its
+        // textValue is the whole lambda body, not the bare id) — silently hiding
+        // every id() usage from Find Usages even though go-to-definition from the
+        // lambda itself worked fine.
+        myFixture.configureByText(
+            "device.yaml",
+            """
+            esphome:
+              name: x
+            output:
+              - platform: gpio
+                id: relay_out
+                pin: 4
+            sensor:
+              - platform: template
+                id: relay_state
+                lambda: |-
+                  return id(relay_out).state ? 1.0 : 0.0;
+            """.trimIndent(),
+        )
+        val usages = myFixture.findUsages(declarationScalar("relay_out"))
+        assertEquals(1, usages.size)
+        assertTrue(usages.single().element!!.text.contains("id(relay_out)"))
+    }
+
     fun `test rename from the declaration updates declaration and references`() {
         myFixture.configureByText("device.yaml", deviceText)
         val offset = myFixture.file.text.indexOf("id: relay_out") + "id: ".length

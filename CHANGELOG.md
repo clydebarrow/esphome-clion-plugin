@@ -7,6 +7,29 @@ release.
 
 ## [Unreleased]
 
+## [0.17.6]
+
+### Added
+
+- The Structure window (and file structure popup) now labels a `sensor:`,
+  `binary_sensor:`, etc. list entry by its `id`, falling back to `name` then
+  `platform`, instead of the bundled YAML view's generic "Sequence item" —
+  with the platform shown alongside as a location hint, and an entity-type
+  icon matching the ESPHome Device tool window's entity list.
+
+### Fixed
+
+- A validation error ESPHome anchors on a whole enclosing block (e.g. an
+  `lvgl:` tree) instead of the specific offending line — such as an id-type
+  mismatch reported deep inside a nested action — no longer risks landing on
+  an unrelated earlier declaration of the same id; it's now underlined at the
+  actual reference.
+- Find Usages on an `id:` declaration now finds `id(<name>)` calls inside a
+  `lambda:` block too. It previously only matched a scalar whose whole value
+  was the bare id, so any usage inside a lambda's C++ text was silently
+  missing from the results (go-to-definition from the lambda itself already
+  worked — only the reverse, declaration-to-usages, search was affected).
+
 ## [0.17.5]
 
 ### Fixed

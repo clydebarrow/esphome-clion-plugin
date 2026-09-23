@@ -212,6 +212,25 @@ are often 2x a single call site). Not all of them are ours to fix:
 
 ## Gotchas worth knowing before you spend time rediscovering them
 
+- **`com.intellij.ide.structureView.impl.common.PsiTreeElementBase` (the
+  convenience base class for a custom Structure View node) moved into a
+  separately-versioned bundled content module
+  (`intellij.platform.structureView`, wrapped by plugin id
+  `intellij.structureView.plugin`) as of CLion/IntelliJ 2026.2 (build 262) —
+  `verifyPlugin` fails with "Package ... is not found" against 262/263 if you
+  extend it, since our plugin.xml doesn't declare that module. The core
+  interfaces it implements — `StructureViewTreeElement`, `ItemPresentation`,
+  `StructureViewModelBase`, `TreeBasedStructureViewBuilder` — all remain in
+  stable platform modules (`intellij.platform.editor.ui`) on every version, so
+  the fix is to implement `StructureViewTreeElement` + `ItemPresentation`
+  directly instead of extending `PsiTreeElementBase`, rather than declaring a
+  dependency on the new module (which risks breaking older builds where it
+  doesn't exist at all). See `EsphomeStructureViewElement`. Relatedly,
+  `com.intellij.util.PsiNavigateUtil.getNavigatable(PsiElement)` isn't
+  resolvable on 242/243 (an older overload gap, opposite direction) — use
+  `element.isValid` for `canNavigate()`/`canNavigateToSource()` instead, it's
+  version-stable and `navigate()` itself (the 2-arg `PsiNavigateUtil.navigate`
+  overload) already handles the real work.
 - **`since-build=242` with no `until-build` means the plugin must keep working
   on platform versions that don't exist yet — a platform API change on a
   newer IDE build can silently break a feature with no compile error and no

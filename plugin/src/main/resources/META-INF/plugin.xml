@@ -138,6 +138,12 @@
             implementation="io.esphome.clion.run.EsphomeEditorFloatingToolbarProvider"/>
     </extensions>
 
+    <!-- Structure window: label sensor/switch/etc. list entries by id/name
+         instead of the bundled YAML view's generic "Sequence item". -->
+    <extensions defaultExtensionNs="com.intellij.yaml">
+        <customStructureViewFactory implementation="io.esphome.clion.structureview.EsphomeStructureViewFactory"/>
+    </extensions>
+
     <actions>
         <action
             id="io.esphome.clion.api.OpenDeviceWindow"

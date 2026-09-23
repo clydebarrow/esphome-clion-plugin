@@ -39,6 +39,16 @@ data class EsphomeDiagnostic(
     val domain: String? = null,
     /** Highlight severity: errors fail the build; warnings are advisory. */
     val severity: EsphomeSeverity = EsphomeSeverity.ERROR,
+    /**
+     * The nearest enclosing key from ESPHome's echoed dump (e.g.
+     * `binary_sensor.template.publish` for an action's `id:` parameter), when
+     * resolvable. A bare `key: value` pair can textually match both the actual
+     * offender and an unrelated declaration of the same id elsewhere in the file
+     * (e.g. an id-reference error's `id: my_id` vs. `my_id`'s own `id:`
+     * declaration) — this lets the annotator prefer the match nested under the
+     * same enclosing key ESPHome echoed, instead of just the first occurrence.
+     */
+    val parentKey: String? = null,
 )
 
 enum class EsphomeSeverity { ERROR, WARNING }
@@ -165,7 +175,14 @@ object EsphomeConfigOutputParser {
         return diagnostics.filter { sameFile(it.file, targetFile) }
     }
 
-    /** Scan a component block body: prose line = error, following `key:` = offender. */
+    /**
+     * Scan a component block body: prose line = error, following `key:` =
+     * offender. Also tracks the nesting of structural keys (indent -> key name)
+     * so each diagnostic can carry its immediate enclosing key — e.g.
+     * `binary_sensor.template.publish` for an `id:` parameter nested under an
+     * action — letting the annotator tell an id-reference apart from an
+     * unrelated `id:` declaration of the same value elsewhere in the file.
+     */
     private fun parseBlock(
         body: List<String>,
         file: String,
@@ -174,6 +191,7 @@ object EsphomeConfigOutputParser {
     ): List<EsphomeDiagnostic> {
         val diagnostics = mutableListOf<EsphomeDiagnostic>()
         val message = mutableListOf<String>()
+        val ancestry = ArrayDeque<Pair<Int, String>>()
 
         for (index in 0..body.size) {
             val line = body.getOrNull(index)
@@ -182,6 +200,11 @@ object EsphomeConfigOutputParser {
             // and YAML list items like `- lvgl.resume:`) are structural, not prose —
             // otherwise a list item in the dump is mistaken for a second error.
             val isProse = line != null && line.isNotBlank() && !isStructuralLine(trimmed)
+            // Blank lines carry no indentation info — leave the ancestry untouched.
+            val indent = if (line != null && trimmed.isNotEmpty()) structuralIndent(line) else null
+            if (indent != null) {
+                while (ancestry.isNotEmpty() && ancestry.last().first >= indent) ancestry.removeLast()
+            }
 
             if (isProse) {
                 message.add(trimmed)
@@ -193,8 +216,13 @@ object EsphomeConfigOutputParser {
                 diagnostics += EsphomeDiagnostic(
                     file, anchorLine, message.joinToString(" "), offendingKey, offendingValue,
                     domain = domain,
+                    parentKey = ancestry.lastOrNull()?.second,
                 )
                 message.clear()
+            }
+
+            if (indent != null) {
+                structuralKey(trimmed)?.let { ancestry.addLast(indent to it) }
             }
         }
         return diagnostics
@@ -203,6 +231,21 @@ object EsphomeConfigOutputParser {
     /** A line from the echoed config: a `key:`/`key: value`, or a YAML list item (`- …`). */
     private fun isStructuralLine(trimmed: String): Boolean =
         YAML_KEY.matches(trimmed) || trimmed == "-" || trimmed.startsWith("- ")
+
+    /** Indentation depth of a dump line's content, counting a `"- "` list marker as +2 columns. */
+    private fun structuralIndent(line: String): Int {
+        var indent = 0
+        while (indent < line.length && line[indent] == ' ') indent++
+        if (line.startsWith("- ", indent)) indent += 2
+        return indent
+    }
+
+    /** The key name opening [trimmed] (`"switch:"` / `"- button:"` -> the key), or null if it isn't a key line. */
+    private fun structuralKey(trimmed: String): String? {
+        val content = trimmed.removePrefix("-").trim()
+        if (!YAML_KEY.matches(content)) return null
+        return content.substringBefore(':').trim().takeIf { it.isNotEmpty() }
+    }
 
     private fun isTopLevelError(raw: String): Boolean {
         if (raw.isBlank() || raw[0].isWhitespace()) return false
