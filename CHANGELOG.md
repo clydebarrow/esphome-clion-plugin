@@ -7,6 +7,19 @@ release.
 
 ## [Unreleased]
 
+## [0.17.7]
+
+### Fixed
+
+- Configs whose `!include` relationships the IDE's file index doesn't cover (a
+  config folder opened as a CLion "empty module", or attached next to an
+  unrelated project) were treated as having none: a package fragment such as
+  `sensors.yaml` showed "Sequence item" in the Structure window, Find Usages on
+  an id found nothing across packages, and id inspections/completion saw only
+  the one file. The include graph now falls back to a bounded
+  filesystem search whenever the index finds no includers, id lookup falls back
+  to reading the files directly, and neither throws during indexing.
+
 ## [0.17.6]
 
 ### Added

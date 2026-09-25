@@ -3,6 +3,8 @@ package io.esphome.clion.services
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.project.DumbService
+import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiManager
 import com.intellij.psi.util.PsiTreeUtil
@@ -47,8 +49,15 @@ class EsphomeIds(private val project: Project) {
      * file isn't indexed) still resolves its own ids — completion and navigation
      * both go through here.
      */
-    fun declarationsIn(scope: Collection<VirtualFile>): List<Declaration> =
-        declarationsFromIndex(scope).ifEmpty { declarationsByPsi(scope) }
+    fun declarationsIn(scope: Collection<VirtualFile>): List<Declaration> {
+        // Reading the index for a file outside the content roots (or in dumb mode)
+        // throws IndexNotReadyException rather than returning empty, so those files
+        // go straight to the PSI scan.
+        val fileIndex = ProjectFileIndex.getInstance(project)
+        val indexable = !DumbService.isDumb(project)
+        val (indexed, unindexed) = scope.partition { indexable && fileIndex.isInContent(it) }
+        return declarationsFromIndex(indexed).ifEmpty { declarationsByPsi(indexed) } + declarationsByPsi(unindexed)
+    }
 
     private fun declarationsFromIndex(scope: Collection<VirtualFile>): List<Declaration> {
         val index = FileBasedIndex.getInstance()
