@@ -165,4 +165,32 @@ class EsphomeIdReferenceTest : BasePlatformTestCase() {
         myFixture.configureByText("device.yaml", text)
         assertNull(resolvedNameAt(text, "output: bus_a", "bus_a"))
     }
+
+    fun `test lvgl action id resolves to a widget declared under widgets`() {
+        // The user's report: `widgets:` as a mapping (ESPHome coerces it to a
+        // one-element list), and an lvgl action whose plain `id:` argument names it.
+        val text = """
+            esphome:
+              name: x
+            lvgl:
+              pages:
+                - id: main_page
+                  widgets:
+                    - button:
+                        checkable: true
+                        id: alarm_test_button
+                        widgets:
+                          label:
+                            id: alarm_test_label
+                            text: "Test"
+            script:
+              - id: test_alarm
+                then:
+                  - lvgl.label.update:
+                      id: alarm_test_label
+                      text: "x"
+        """.trimIndent()
+        myFixture.configureByText("device.yaml", text)
+        assertEquals("alarm_test_label", resolvedNameAt(text, "lvgl.label.update:", "alarm_test_label"))
+    }
 }

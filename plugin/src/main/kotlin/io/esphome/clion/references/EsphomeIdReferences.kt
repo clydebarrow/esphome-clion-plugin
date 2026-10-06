@@ -61,7 +61,11 @@ object EsphomeIdReferences {
         // A plain `id:` is a declaration, but `id: !extend X` / `id: !remove X`
         // reference the X declared in a package — so those navigate like a use.
         if (keyValue.keyText == ID_KEY) {
-            return EsphomeYaml.isMergeTaggedId(scalar) && scalar.textValue.matches(ID_TOKEN)
+            if (EsphomeYaml.isMergeTaggedId(scalar)) return scalar.textValue.matches(ID_TOKEN)
+            // A plain `id:` under an action (`lvgl.label.update: { id: x }`) is a
+            // use_id argument, not a declaration. Catalog-less components like lvgl
+            // have no references_component to type it, so it navigates untyped.
+            return !EsphomeYaml.isDeclarationId(keyValue) && scalar.textValue.matches(ID_TOKEN)
         }
         // A tagged scalar (`!secret`, `!lambda`, `!include`, …) has its own
         // meaning — it is not a plain id reference even if it reads like one.

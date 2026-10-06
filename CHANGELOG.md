@@ -7,6 +7,15 @@ release.
 
 ## [Unreleased]
 
+## [0.17.8]
+
+### Fixed
+
+- An lvgl action's plain `id:` argument (`lvgl.label.update: { id: my_label }`)
+  didn't navigate to the widget it names, so Ctrl-click and Find Usages missed
+  it. lvgl ships no typed id references, so the action's `id:` now resolves
+  untyped, like other catalog-less id uses.
+
 ## [0.17.7]
 
 ### Fixed
