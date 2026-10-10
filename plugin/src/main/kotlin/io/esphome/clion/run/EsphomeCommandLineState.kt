@@ -1,14 +1,21 @@
 package io.esphome.clion.run
 
+import com.intellij.execution.DefaultExecutionResult
+import com.intellij.execution.ExecutionResult
+import com.intellij.execution.Executor
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.configurations.PathEnvironmentVariableUtil
 import com.intellij.execution.configurations.PtyCommandLine
+import com.intellij.execution.filters.TextConsoleBuilderFactory
 import com.intellij.execution.process.CapturingProcessHandler
+import com.intellij.execution.process.KillableProcessHandler
 import com.intellij.execution.process.ProcessHandler
 import com.intellij.execution.process.ProcessTerminatedListener
 import com.intellij.execution.runners.ExecutionEnvironment
+import com.intellij.execution.runners.ProgramRunner
 import com.intellij.execution.configurations.CommandLineState
 import com.intellij.openapi.util.SystemInfo
+import com.intellij.terminal.TerminalExecutionConsole
 import com.intellij.util.EnvironmentUtil
 import com.intellij.util.execution.ParametersListUtil
 import io.esphome.clion.settings.EsphomeSettings
@@ -21,25 +28,47 @@ class EsphomeCommandLineState(
     environment: ExecutionEnvironment,
 ) : CommandLineState(environment) {
 
-    override fun startProcess(): ProcessHandler {
-        val base = buildCommandLine()
-        // Run under a pseudo-terminal so ESPHome/esptool see a TTY and emit
-        // ANSI-colored logs and an in-place `\r` progress bar. On by default via
-        // "Emulate a terminal" (serial included — EsphomeProcessHandler keeps the
-        // upload bar visible). Network ops (OTA upload/logs) still force it even if
-        // the option is turned off, since there's no serial port to worry about.
+    // Run under a pseudo-terminal so ESPHome/esptool see a TTY and emit
+    // ANSI-colored logs and an in-place `\r` progress bar. On by default via
+    // "Emulate a terminal". Network ops (OTA upload/logs) still force it even if
+    // the option is turned off, since there's no serial port to worry about.
+    private fun usesPty(): Boolean {
         val networkOp = configuration.command.usesDevice &&
             EsphomeCommandLines.isNetworkDevice(configuration.device)
-        val commandLine = if (configuration.emulateTerminal || networkOp) {
-            PtyCommandLine(base).withConsoleMode(false)
-        } else {
-            base
-        }
-        // EsphomeProcessHandler (not a bare KillableColoredProcessHandler) so
-        // esptool's in-place `\r` upload progress stays visible in the console.
-        val handler = EsphomeProcessHandler(commandLine)
+        return configuration.emulateTerminal || networkOp
+    }
+
+    override fun startProcess(): ProcessHandler {
+        val base = buildCommandLine()
+        val pty = usesPty()
+        val commandLine = if (pty) PtyCommandLine(base).withConsoleMode(false) else base
+        // A PTY run is shown in a real terminal widget (see execute()), which reads
+        // ANSI/`\r` straight off the stream itself — so the process handler here
+        // must hand over raw bytes, not the IDE's own pre-decoded colored text.
+        // Without a PTY, EsphomeProcessHandler's colored-console + CR-coalescing
+        // path (see its doc comment) is what keeps esptool's progress bar visible.
+        val handler = if (pty) KillableProcessHandler(commandLine) else EsphomeProcessHandler(commandLine)
         ProcessTerminatedListener.attach(handler)
         return handler
+    }
+
+    /**
+     * A PTY run gets a real terminal widget ([TerminalExecutionConsole], JediTerm)
+     * instead of the default Editor-backed console. Besides matching an actual
+     * terminal's look, this is what lets keystrokes (e.g. picking a flash target
+     * from ESPHome's numbered port menu) reach the process immediately — the
+     * default console is an IDE editor, so a key plugin like IdeaVim can capture
+     * keystrokes meant for the running process before they ever reach it.
+     */
+    override fun execute(executor: Executor, runner: ProgramRunner<*>): ExecutionResult {
+        val processHandler = startProcess()
+        val console = if (usesPty()) {
+            TerminalExecutionConsole(environment.project, processHandler).also { it.attachToProcess(processHandler) }
+        } else {
+            (createConsole(executor) ?: TextConsoleBuilderFactory.getInstance().createBuilder(environment.project).console)
+                .also { it.attachToProcess(processHandler) }
+        }
+        return DefaultExecutionResult(console, processHandler, *createActions(console, processHandler, executor))
     }
 
     private fun buildCommandLine(): GeneralCommandLine = EsphomeCommandLines.build(

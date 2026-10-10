@@ -7,6 +7,17 @@ release.
 
 ## [Unreleased]
 
+## [0.17.9]
+
+### Fixed
+
+- A run/flash console keystroke (e.g. picking a flash target from ESPHome's
+  numbered serial-port menu) could be swallowed by an editor key handler like
+  IdeaVim instead of reaching the process — the console was an IDE editor
+  component, which such plugins treat like any other editor. A PTY run (the
+  default) now uses a real terminal widget, which forwards keystrokes to the
+  process directly.
+
 ## [0.17.8]
 
 ### Fixed

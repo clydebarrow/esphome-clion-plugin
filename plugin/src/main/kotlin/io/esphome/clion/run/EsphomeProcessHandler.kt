@@ -5,7 +5,11 @@ import com.intellij.execution.process.KillableColoredProcessHandler
 import com.intellij.openapi.util.Key
 
 /**
- * Run-process handler that keeps esptool's in-place upload progress visible.
+ * Run-process handler that keeps esptool's in-place upload progress visible in
+ * the default Editor-backed console. Only used for the non-PTY fallback path
+ * (`emulateTerminal` off and not a network target) — a PTY run gets a real
+ * terminal widget instead (see [EsphomeCommandLineState.execute]), which needs
+ * no such workaround.
  *
  * esptool draws its progress bar by emitting a frame per update — `\r` (return to
  * column 0), then the bar — with no trailing newline. By the time those frames
