@@ -149,6 +149,13 @@ object EsphomeCommandLines {
      * file basename, so Docker's in-container `/config/<name>` paths still map
      * back to the open file. [executable] is required for LOCAL/VENV and ignored
      * for DOCKER.
+     *
+     * Requests the `--error-format line` output shape via the `ESPHOME_ERROR_FORMAT`
+     * env var rather than a CLI flag: an esphome build that predates the feature
+     * doesn't look at it, so it's a silent no-op there (unlike an unrecognized
+     * flag, which argparse would reject outright) — [EsphomeConfigOutputParser]
+     * detects which shape actually came back and parses accordingly, so no
+     * version probe is needed here.
      */
     fun buildConfig(
         backend: EsphomeBackend,
@@ -163,14 +170,17 @@ object EsphomeCommandLines {
                 val exe = executable ?: error("esphome executable not found")
                 // `esphome config` validates the SDL display too, which runs
                 // sdl2-config — so validation needs the same env as a build.
-                GeneralCommandLine(exe, "config", configFile.path).withEnvironment(sdlEnvironment())
+                GeneralCommandLine(exe, "config", configFile.path)
+                    .withEnvironment(sdlEnvironment() + ERROR_FORMAT_ENV)
             }
             EsphomeBackend.DOCKER ->
                 GeneralCommandLine(dockerExecutable)
-                    .withParams(dockerRun(configFile, cacheDir, dockerImage, "config", configFile.name))
+                    .withParams(dockerRun(configFile, cacheDir, dockerImage, "config", configFile.name, ERROR_FORMAT_ENV))
         }
         return commandLine.finalize(configFile.parentFile)
     }
+
+    private val ERROR_FORMAT_ENV = mapOf("ESPHOME_ERROR_FORMAT" to "line")
 
     /**
      * Whether [device] is a network target (OTA: hostname/IP/`name.local`) rather
@@ -185,20 +195,22 @@ object EsphomeCommandLines {
     // Serial ports: /dev/ttyUSB0, /dev/cu.usbserial-…, COM3, ttyACM0, cu.…
     private val SERIAL_PORT = Regex("(?i)^(COM\\d+|/dev/.*|tty.*|cu\\..*)$")
 
-    /** `run --rm -v <dir>:/config [-v <cache>:/cache] -w /config <image> <sub> <target>`. */
+    /** `run --rm -v <dir>:/config [-v <cache>:/cache] [-e K=V ...] -w /config <image> <sub> <target>`. */
     private fun dockerRun(
         configFile: File,
         cacheDir: File?,
         dockerImage: String,
         subcommand: String,
         target: String,
+        env: Map<String, String> = emptyMap(),
     ): List<String> {
         val dir = configFile.parentFile?.path ?: "."
         val mounts = buildList {
             addAll(listOf("-v", "$dir:/config"))
             cacheDir?.let { addAll(listOf("-v", "${it.path}:/cache")) }
         }
-        return listOf("run", "--rm") + mounts + listOf("-w", "/config", dockerImage, subcommand, target)
+        val envArgs = env.flatMap { (key, value) -> listOf("-e", "$key=$value") }
+        return listOf("run", "--rm") + mounts + envArgs + listOf("-w", "/config", dockerImage, subcommand, target)
     }
 
     /** Common command-line finishing: working dir, UTF-8, and a login-shell PATH. */

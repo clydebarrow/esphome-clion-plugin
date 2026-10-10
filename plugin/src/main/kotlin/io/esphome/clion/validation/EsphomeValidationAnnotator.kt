@@ -242,12 +242,49 @@ class EsphomeValidationAnnotator : ExternalAnnotator<EsphomeValidationAnnotator.
             }
         }
         val anchor = (diagnostic.anchorLine - 1).coerceIn(0, document.lineCount - 1)
+        // `--error-format line` output gives an exact column — no key search
+        // needed (and none is possible: this path never sets offendingKey).
+        diagnostic.column?.let { return columnRange(document, anchor, it) }
         val line = diagnostic.offendingKey
             ?.takeUnless { ABSENCE_ERROR.containsMatchIn(diagnostic.message) }
             ?.let { findOffendingLine(document, anchor, it, diagnostic.offendingValue, diagnostic.parentKey) }
             ?: anchor
         return trimmedLineRange(document, line)
     }
+
+    /**
+     * Range starting at [column] (1-based) on [line], extending only to the end
+     * of the single token that starts there — ESPHome's `--error-format line`
+     * output gives just a start position, not the offending token's extent, and
+     * that start isn't always the token you'd expect either (e.g. a "could not
+     * find action" error's mark lands on the action's *value* node, not its
+     * `key:` — confirmed against a real `esphome config` run). Running all the
+     * way to the end of the line papers over that by sweeping in whatever
+     * unrelated text follows (a whole log message, say), which reads as "this
+     * entire line is wrong" — so instead this trusts the column as a start point
+     * but keeps the highlight to one plausible token: the matched pair of quotes
+     * when it starts on one (a quoted value), else a run of identifier-ish
+     * characters (a bare key or token), with at least one character either way.
+     */
+    private fun columnRange(document: Document, line: Int, column: Int): TextRange {
+        val lineStart = document.getLineStartOffset(line)
+        val lineEnd = document.getLineEndOffset(line)
+        val text = document.charsSequence
+        val start = (lineStart + column - 1).coerceIn(lineStart, lineEnd)
+        var end = start
+        val quote = text.getOrNull(start)?.takeIf { it == '\'' || it == '"' }
+        if (quote != null) {
+            end++
+            while (end < lineEnd && text[end] != quote) end++
+            if (end < lineEnd) end++ // include the closing quote
+        } else {
+            while (end < lineEnd && isTokenChar(text[end])) end++
+        }
+        return TextRange(start, maxOf(end, start + 1).coerceAtMost(lineEnd).coerceAtLeast(start))
+    }
+
+    /** A bare YAML key/id-ish character: letters, digits, `_`, `.`, `-`. */
+    private fun isTokenChar(c: Char): Boolean = c.isLetterOrDigit() || c == '_' || c == '.' || c == '-'
 
     /** Range of the first *whole-word* occurrence of [token] in the document. */
     private fun findToken(document: Document, token: String): TextRange? {

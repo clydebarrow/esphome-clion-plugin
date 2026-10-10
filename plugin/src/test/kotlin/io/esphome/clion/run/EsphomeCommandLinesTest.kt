@@ -188,7 +188,7 @@ class EsphomeCommandLinesTest {
     @Test
     fun `config validation on docker mounts the dir and runs config on the basename`() {
         assertEquals(
-            "docker run --rm -v /home/me/devices:/config -w /config " +
+            "docker run --rm -v /home/me/devices:/config -e ESPHOME_ERROR_FORMAT=line -w /config " +
                 "ghcr.io/esphome/esphome:latest config living_room.yaml",
             EsphomeCommandLines.buildConfig(
                 EsphomeBackend.DOCKER, config, executable = null,
@@ -201,12 +201,23 @@ class EsphomeCommandLinesTest {
     fun `config validation on docker adds the cache mount when given`() {
         assertEquals(
             "docker run --rm -v /home/me/devices:/config -v /home/me/.cache/esphome:/cache " +
-                "-w /config ghcr.io/esphome/esphome:latest config living_room.yaml",
+                "-e ESPHOME_ERROR_FORMAT=line -w /config ghcr.io/esphome/esphome:latest config living_room.yaml",
             EsphomeCommandLines.buildConfig(
                 EsphomeBackend.DOCKER, config, executable = null,
                 dockerImage = EsphomeRunOptions.DEFAULT_DOCKER_IMAGE,
                 cacheDir = File("/home/me/.cache/esphome"),
             ).commandLineString,
         )
+    }
+
+    @Test
+    fun `config validation requests line-format errors via an env var, not a flag`() {
+        // A CLI flag an older esphome doesn't recognize would hard-fail argument
+        // parsing; an env var it never reads is a silent no-op there instead.
+        val commandLine = EsphomeCommandLines.buildConfig(
+            EsphomeBackend.LOCAL, config, "/usr/bin/esphome", EsphomeRunOptions.DEFAULT_DOCKER_IMAGE,
+        )
+        assertEquals("line", commandLine.environment["ESPHOME_ERROR_FORMAT"])
+        assertEquals("/usr/bin/esphome config /home/me/devices/living_room.yaml", commandLine.commandLineString)
     }
 }

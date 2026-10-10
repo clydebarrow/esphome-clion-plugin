@@ -343,4 +343,57 @@ class EsphomeConfigOutputParserTest {
         assertTrue(EsphomeConfigOutputParser.parse("", "x.yaml").isEmpty())
         assertTrue(EsphomeConfigOutputParser.parse("INFO Configuration is valid!", "x.yaml").isEmpty())
     }
+
+    // --- `--error-format line` / `ESPHOME_ERROR_FORMAT=line` output ---
+
+    @Test
+    fun `parses a located line-format error with its exact line and column`() {
+        val out = "host.yaml:29:5: error: [imezone] is an invalid option for [time.host]. Did you mean [timezone]?"
+        val diagnostic = EsphomeConfigOutputParser.parse(out, "host.yaml").single()
+        assertEquals(29, diagnostic.anchorLine)
+        assertEquals(5, diagnostic.column)
+        assertTrue(diagnostic.message.startsWith("[imezone] is an invalid option"))
+    }
+
+    @Test
+    fun `drops note lines from line-format output`() {
+        // A YAML syntax error prints an `error:` line plus a `note:` line giving
+        // context — the note is supplementary, not a second problem.
+        val out = """
+            bad.yaml:5:3: error: mapping values are not allowed here
+            bad.yaml:2:1: note: included from here
+        """.trimIndent()
+        val diagnostics = EsphomeConfigOutputParser.parse(out, "bad.yaml")
+        assertEquals(1, diagnostics.size)
+        assertEquals(5, diagnostics[0].anchorLine)
+        assertTrue(diagnostics[0].message.startsWith("mapping values"))
+    }
+
+    @Test
+    fun `filters located line-format errors to the target file`() {
+        val out = """
+            device.yaml:1:1: error: fine, ignore me not
+            fragment.yaml:3:5: error: Bad thing happened.
+        """.trimIndent()
+        assertEquals(1, EsphomeConfigOutputParser.parse(out, "fragment.yaml").size)
+        assertTrue(
+            EsphomeConfigOutputParser.parse(out, "fragment.yaml").single().message.startsWith("Bad thing happened"),
+        )
+    }
+
+    @Test
+    fun `an unlocated line-format error respects includeTopLevelErrors`() {
+        val out = "device.yaml: error: could not read configuration file"
+        assertEquals(1, EsphomeConfigOutputParser.parse(out, "device.yaml", includeTopLevelErrors = true).size)
+        assertTrue(EsphomeConfigOutputParser.parse(out, "device.yaml", includeTopLevelErrors = false).isEmpty())
+    }
+
+    @Test
+    fun `does not mistake block-dump output for line format`() {
+        // Sanity check: none of the classic block-dump fixtures above trip the
+        // line-format detector and get mis-parsed by it instead.
+        val diagnostics = EsphomeConfigOutputParser.parse(realOutput, "/abs/path/bad.yaml")
+        assertEquals(2, diagnostics.size)
+        assertTrue(diagnostics.all { it.column == null })
+    }
 }

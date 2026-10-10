@@ -7,6 +7,15 @@ release.
 
 ## [Unreleased]
 
+## [0.17.10]
+
+### Improved
+
+- Validation now locates an error at its exact source line and column when the
+  installed `esphome` supports the newer `--error-format line` output, instead
+  of searching the file for the offending key. Falls back to the previous
+  behavior on older esphome versions automatically.
+
 ## [0.17.9]
 
 ### Fixed

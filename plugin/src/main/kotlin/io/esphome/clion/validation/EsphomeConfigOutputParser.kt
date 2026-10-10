@@ -49,6 +49,22 @@ data class EsphomeDiagnostic(
      * same enclosing key ESPHome echoed, instead of just the first occurrence.
      */
     val parentKey: String? = null,
+    /**
+     * 1-based source column, from `--error-format line` / `ESPHOME_ERROR_FORMAT=line`
+     * output (see [EsphomeConfigOutputParser.parseLineFormat]). Null for the
+     * classic block-dump format, where ESPHome gives no column — just a line to
+     * search within for the offending key.
+     */
+    val column: Int? = null,
+    /**
+     * A bare `key:` to search for on [anchorLine] specifically, overriding
+     * [column] — set only for the message shapes where ESPHome's own column is
+     * known to anchor on the *value* instead of the key (see
+     * [EsphomeConfigOutputParser.registryEntryKey]'s doc for why). Unlike
+     * [searchToken], this is the literal full YAML key text (e.g. `loggr.log`),
+     * not a dotted name's last segment.
+     */
+    val keyHint: String? = null,
 )
 
 enum class EsphomeSeverity { ERROR, WARNING }
@@ -56,7 +72,16 @@ enum class EsphomeSeverity { ERROR, WARNING }
 /**
  * Parses the textual output of `esphome config <file>`.
  *
- * Two error shapes occur:
+ * Requests the newer `--error-format line` shape unconditionally (see
+ * [EsphomeCommandLines.buildConfig]) via the `ESPHOME_ERROR_FORMAT` env var —
+ * an esphome build that predates the feature just ignores an env var it never
+ * reads, and prints the classic block dump instead, so [parse] detects which
+ * shape actually came back ([isLineFormat]) and dispatches to [parseLineFormat]
+ * or the block-dump path accordingly. One line per error (plus a `note:` line
+ * on some, dropped here), each carrying its own exact file/line/column — no
+ * echoed-config scanning or key disambiguation needed, unlike the block dump.
+ *
+ * The block dump shapes, still handled for an older esphome:
  *
  * 1. **Component block** — `<path>: [source <file>:<line>]` followed by the
  *    echoed config with error messages *interleaved* right before the offending
@@ -87,6 +112,11 @@ object EsphomeConfigOutputParser {
     private val WARNING_LINE = Regex("""^WARNING\s+(.+)$""")
     private val GPIO = Regex("""\bGPIO\d+\b""")
     private val PLATFORM_NOT_FOUND = Regex("""^Platform not found\b""")
+
+    /** `--error-format line`, with a resolved source location: `file:line:col: error|note: message`. */
+    private val LINE_LOCATED = Regex("""^(.+):(\d+):(\d+): (error|note): (.*)$""")
+    /** `--error-format line`, no resolvable location (e.g. an unreadable file): `file: error|note: message`. */
+    private val LINE_UNLOCATED = Regex("""^(.+): (error|note): (.*)$""")
 
     /**
      * `WARNING …` lines from `esphome config` (e.g. a strapping-pin advisory).
@@ -126,6 +156,7 @@ object EsphomeConfigOutputParser {
         targetFile: String,
         includeTopLevelErrors: Boolean = true,
     ): List<EsphomeDiagnostic> {
+        if (isLineFormat(output)) return parseLineFormat(output, targetFile, includeTopLevelErrors)
         val lines = output.lines()
         val diagnostics = mutableListOf<EsphomeDiagnostic>()
         var failedSeen = false
@@ -172,6 +203,59 @@ object EsphomeConfigOutputParser {
             i++
         }
 
+        return diagnostics.filter { sameFile(it.file, targetFile) }
+    }
+
+    /**
+     * Whether [output] is in the `--error-format line` shape rather than the
+     * classic block dump. `": error: "`/`": note: "` is distinctive enough
+     * (the block dump never produces it — its prose lines carry no location
+     * prefix) that a single matching line is a safe signal, with no need to
+     * probe the esphome version separately.
+     */
+    private fun isLineFormat(output: String): Boolean =
+        output.lineSequence().any {
+            val trimmed = it.trimEnd()
+            LINE_LOCATED.matches(trimmed) || LINE_UNLOCATED.matches(trimmed)
+        }
+
+    /**
+     * Parses `--error-format line` output: one `file:line:col: error: message`
+     * line per problem (an unresolvable location drops the `:line:col` down to
+     * just `file: error: message` — see [EsphomeDiagnostic.column]'s doc).
+     * `note:` lines (YAML-error context, or "included from here" on a fragment's
+     * wrapped error) are supplementary to the `error:` line right before them,
+     * not separate problems, so they're dropped rather than turned into their
+     * own diagnostic.
+     */
+    private fun parseLineFormat(
+        output: String,
+        targetFile: String,
+        includeTopLevelErrors: Boolean,
+    ): List<EsphomeDiagnostic> {
+        val diagnostics = mutableListOf<EsphomeDiagnostic>()
+        for (raw in output.lineSequence()) {
+            val trimmed = raw.trimEnd()
+            val located = LINE_LOCATED.matchEntire(trimmed)
+            if (located != null) {
+                val (file, lineStr, colStr, kind, message) = located.destructured
+                if (kind == "error") {
+                    diagnostics += EsphomeDiagnostic(
+                        file, lineStr.toIntOrNull() ?: 0, message, offendingKey = null,
+                        column = colStr.toIntOrNull(),
+                    )
+                }
+                continue
+            }
+            val unlocated = LINE_UNLOCATED.matchEntire(trimmed) ?: continue
+            val (_, kind, message) = unlocated.destructured
+            // No file/line to attribute this to by itself — same ambiguity as a
+            // headerless block-dump error, so it's only trusted for the file
+            // actually being validated (see `includeTopLevelErrors`'s doc on [parse]).
+            if (kind == "error" && includeTopLevelErrors) {
+                diagnostics += EsphomeDiagnostic(targetFile, 0, message, offendingKey = null)
+            }
+        }
         return diagnostics.filter { sameFile(it.file, targetFile) }
     }
 
